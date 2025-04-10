@@ -19,15 +19,17 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "fatfs.h"
-#include "usb_device.h"
+#include "usb_host.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "display.h"
 #include "flash_r_w.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,37 +52,117 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-SPI_HandleTypeDef hspi1;
+TIM_HandleTypeDef htim2;
+
+UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
 
+extern ApplicationTypeDef Appli_state;
+extern USBH_HandleTypeDef hUsbHostFS;
+
+
+FATFS USBDISKFatFs;
+FIL File;
+
+
+DIR Main_Dir;
+FILINFO Main_Dir_Fileinfo;
+
+
+USBSTAT USB_Status_For_Display;
+uint8_t USB_Status_For_Menu_Item;
+uint8_t Menu_Proces_Status=0;
+
+uint8_t DOWN_BUTTON_Flag;
+uint8_t DOWN_BUTTON_Bit;
+uint8_t UP_BUTTON_Flag;
+uint8_t UP_BUTTON_Bit;
+uint8_t RIGHT_BUTTON_Flag;
+uint8_t RIGHT_BUTTON_Bit;
+uint8_t LEFT_BUTTON_Flag;
+uint8_t LEFT_BUTTON_Bit;
+
+char UsbFileName_For_Display[32][32];
+char Name_For_File_Open[32][32];
+
+uint32_t File_Size_Mas[32];
+
+uint32_t File_Size_Current;
+
+char SwNewName[32];
+char SwCurrName[32];
+
+uint16_t DispFileNum;		// 10 file in list -> it is for DEMO only
+uint16_t DispFilePos;		// current position in file list
+
+uint8_t Finde_BIN_Files=0;
+
+uint8_t Firmware_Upgrase_Allowed = 0;
+uint8_t Firmware_Upgrase_Allowed_Counter = 0;
+
+
+uint8_t Read_Version_Allowed = 0;
+uint8_t Read_Version_Allowed_Counter;
+
+uint8_t Bin_File_is_Found = 0;
+
+uint8_t Counter_For_String;
+
+uint8_t File_Nomber_Counter;
+
+uint8_t Need_Do_Onse;
+
+union  {uint8_t Type_u8_t[2]; int16_t Type_u16_t;} Value;
+
+int16_t Value_int16_t;
+
+
+uint8_t Verification_Error;
+uint8_t Exit_Bit;
+
+uint8_t Exit_Flag_FR;
+
 uint8_t buffer[STORAGE_BLK_NBR*STORAGE_BLK_SIZ];
 uint8_t USB_data_read_flag = 0;
+uint32_t USB_live_counter = 0;
+uint32_t buffer_size = 0;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_SPI1_Init(void);
+static void MX_DMA_Init(void);
+static void MX_USART2_UART_Init(void);
+static void MX_TIM2_Init(void);
+void MX_USB_HOST_Process(void);
+
 /* USER CODE BEGIN PFP */
+void FLASH_Program_Byte_Customized(uint32_t Address, uint8_t Data);
+void Jump_To_Main_Application(void);
+void Check_If_Need_Start_Main_Program(void);
+void Work_With_File_in_the_USB_Flash(void);
+void Read_Firmware_Version_From_File(void);
+uint8_t Try_Finde_BIN_File(void);
 
-#define BIN_SOURCE_ADDR ((uint32_t)0x08100000)
-#define BIN_DEST_ADDR   ((uint32_t)0x08010000)
+#define FLASH_SOURCE_ADDR  ((uint32_t)0x08100000)
+#define FLASH_DEST_ADDR    ((uint32_t)0x08020000)
 
-void Data_From_USB_To_Flash(const uint8_t *RAM_buf, uint8_t data_size)
+void Data_From_USB_To_Flash(uint32_t data_size)
 {
     //memcpy(RAM_buf, (uint8_t*)BIN_SOURCE_ADDR, BIN_MAX_SIZE);
 
     HAL_FLASH_Unlock();
 
-    // Очистити сектор (сектор 4 починається з 0x08010000, розмір – 64KB)
+    // Очистити сектор (сектор 5 починається з 0x08020000, розмір – KB)
     FLASH_EraseInitTypeDef eraseInit;
     uint32_t SectorError;
 
     eraseInit.TypeErase    = FLASH_TYPEERASE_SECTORS;
     eraseInit.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-    eraseInit.Sector       = FLASH_SECTOR_4;
+    eraseInit.Sector       = FLASH_SECTOR_5;
     eraseInit.NbSectors    = 1;
 
     if (HAL_FLASHEx_Erase(&eraseInit, &SectorError) != HAL_OK)
@@ -88,13 +170,12 @@ void Data_From_USB_To_Flash(const uint8_t *RAM_buf, uint8_t data_size)
         HAL_FLASH_Lock();
         return;
     }
-
     // Запис байт у флеш по 4 байти
     for (uint32_t i = 0; i < data_size; i += 4)
     {
         uint32_t data;
-        memcpy(&data, RAM_buf + i, 4);
-        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, BIN_DEST_ADDR + i, data) != HAL_OK)
+        memcpy(&data, buffer[i], 4);
+        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_DEST_ADDR + i, data) != HAL_OK)
         {
         	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, (!HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7)));
         	break;
@@ -102,6 +183,18 @@ void Data_From_USB_To_Flash(const uint8_t *RAM_buf, uint8_t data_size)
     }
 
     HAL_FLASH_Lock();
+}
+
+bool Is_Flash_Data_Matching(uint32_t size)
+{
+    uint32_t *flash_ptr = (uint32_t*)FLASH_DEST_ADDR;
+
+    if (memcmp(flash_ptr, buffer, size) == 0)
+    {
+        return true; // Дані збігаються
+    } else {
+        return false;
+    }
 }
 
 /* USER CODE END PFP */
@@ -140,9 +233,11 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_SPI1_Init();
+  MX_DMA_Init();
   MX_FATFS_Init();
-  MX_USB_DEVICE_Init();
+  MX_USART2_UART_Init();
+  MX_USB_HOST_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -152,13 +247,74 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+    MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
 
-	  if (USB_data_read_flag){
-		  Data_From_USB_To_Flash(buffer, sizeof(buffer));
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
-	  }
+    if(Appli_state==APPLICATION_READY)
+    	//------------------------------------
+    {
+
+    	//--------------------------------------------------------------
+    	if ( Finde_BIN_Files )
+    	{
+    		if ( Need_Do_Onse == 0 )
+    		{
+    			//Check if file is present
+    			Bin_File_is_Found = Try_Finde_BIN_File();
+
+    			if ( Bin_File_is_Found == 1 ) { USB_Status_For_Menu_Item = 2; } else { USB_Status_For_Menu_Item = 1; }
+
+    			Need_Do_Onse = 1;
+
+    		}
+
+    	}
+    	//--------------------------------------------------------------
+
+    	//--------------------------------------------------------------
+    	if ( Read_Version_Allowed )
+    	{
+    		Read_Firmware_Version_From_File();
+    	}
+    	//--------------------------------------------------------------
+
+    	//--------------------------------------------------------------
+    	if ( Firmware_Upgrase_Allowed  )
+    	{
+    		Work_With_File_in_the_USB_Flash();
+    	}
+    	//--------------------------------------------------------------
+
+    }
+    else
+    {
+    	if ( Finde_BIN_Files )
+    	{
+    		USB_Status_For_Menu_Item = 0;
+    		USB_Status_For_Display=USB_STAT_NO_USB;
+
+
+    		USB_Status_For_Menu_Item = 0;
+    		Need_Do_Onse=0;
+    		DispFilePos=0;
+    	}
+
+    }
+
+//	  if(USB_data_read_flag){
+//		  uint32_t *flash_ptr = (uint32_t*)FLASH_DEST_ADDR;
+//		  if (memcmp(flash_ptr, buffer, sizeof(buffer)) != 0)
+//		  {
+//			  //Data_From_USB_To_Flash(buffer, sizeof(buffer));
+//			  buffer_size = sizeof(buffer);
+//			  Data_From_USB_To_Flash(sizeof(buffer));
+//			  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
+//			  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
+//		  }else{
+//			  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
+//		  }
+//	  }
 
   }
   /* USER CODE END 3 */
@@ -176,7 +332,7 @@ void SystemClock_Config(void)
   /** Configure the main internal regulator output voltage
   */
   __HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -186,9 +342,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 120;
+  RCC_OscInitStruct.PLL.PLLN = 168;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 5;
+  RCC_OscInitStruct.PLL.PLLQ = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -203,47 +359,103 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
     Error_Handler();
   }
 }
 
 /**
-  * @brief SPI1 Initialization Function
+  * @brief TIM2 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_SPI1_Init(void)
+static void MX_TIM2_Init(void)
 {
 
-  /* USER CODE BEGIN SPI1_Init 0 */
+  /* USER CODE BEGIN TIM2_Init 0 */
 
-  /* USER CODE END SPI1_Init 0 */
+  /* USER CODE END TIM2_Init 0 */
 
-  /* USER CODE BEGIN SPI1_Init 1 */
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-  /* USER CODE END SPI1_Init 1 */
-  /* SPI1 parameter configuration*/
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 10;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 840-1;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 1000-1;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN SPI1_Init 2 */
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
 
-  /* USER CODE END SPI1_Init 2 */
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
 
 }
 
@@ -260,24 +472,479 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOH_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14|GPIO_PIN_7, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : PB7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7;
+  /*Configure GPIO pins : PB14 PB7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : BTN_R_Pin BTN_DOWN_Pin BTN_UP_Pin BTN_L_Pin */
+  GPIO_InitStruct.Pin = BTN_R_Pin|BTN_DOWN_Pin|BTN_UP_Pin|BTN_L_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
+
+void FLASH_Program_Byte_Customized(uint32_t Address, uint8_t Data)
+{	
+	CLEAR_BIT(FLASH->CR, FLASH_CR_PSIZE);
+	FLASH->CR |= FLASH_PSIZE_BYTE;
+	FLASH->CR |= FLASH_CR_PG;
+
+	*(__IO uint8_t*)Address = Data;
+
+	while ((FLASH->SR & FLASH_SR_BSY) != 0 ) {  }
+}
+
+void Jump_To_Main_Application(void)
+{
+	uint32_t APPLICATION_ADDRESS = 0x08008000;
+
+	typedef  void (*pFunction)(void);
+
+	pFunction Jump_To_Application;
+
+	uint32_t JumpAddress;
+
+
+	// Jump to user application
+	JumpAddress = *(__IO uint32_t*) (APPLICATION_ADDRESS + 4);
+	Jump_To_Application = (pFunction) JumpAddress;
+	// Initialize user application's Stack Pointer
+	__set_MSP(*(__IO uint32_t*) APPLICATION_ADDRESS);
+	Jump_To_Application();
+}
+
+void Check_If_Need_Start_Main_Program(void)
+{
+
+	if ( ( HAL_GPIO_ReadPin(GPIOD,GPIO_PIN_0) == 1 ) || ( HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_3) == 1 ) )
+	{
+		Jump_To_Main_Application();
+	}
+
+}
+
+void Work_With_File_in_the_USB_Flash(void)
+{
+	UINT bytesread;
+	uint8_t rtext[1];
+
+	uint32_t Byte_Nomber;
+
+	uint32_t File_Size;
+
+	Verification_Error = 1;
+
+	uint32_t Erase_Timer;
+
+	Exit_Flag_FR = 0;
+
+
+	while ( Verification_Error == 1 )
+	{
+
+		HAL_FLASH_Unlock();
+
+    HAL_FLASH_Unlock();
+
+    // Очистити сектор (сектор 5 починається з 0x08020000, розмір – KB)
+    FLASH_EraseInitTypeDef eraseInit;
+    uint32_t SectorError;
+
+    eraseInit.TypeErase    = FLASH_TYPEERASE_SECTORS;
+    eraseInit.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+    eraseInit.Sector       = FLASH_SECTOR_5 | FLASH_SECTOR_6 | FLASH_SECTOR_7 | FLASH_SECTOR_8;
+    eraseInit.NbSectors    = 1;
+
+    if (HAL_FLASHEx_Erase(&eraseInit, &SectorError) != HAL_OK)
+    {
+        HAL_FLASH_Lock();
+        return;
+    }
+
+		// FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_2);
+		// FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_3);
+		// FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_4);
+		// FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_5);
+		// FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_6);
+		// FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_7);
+		//---------------------------------------------------
+		USB_Status_For_Display = USB_STAT_PROC_LOAD;
+
+
+		File_Size = 0;
+
+
+		if(f_mount(&USBDISKFatFs,"0:",0)==FR_OK)
+			//---------------------------------------------------------
+		{
+
+			if(f_open(&File, Name_For_File_Open[DispFilePos] ,FA_READ)==FR_OK)
+				//---------------------------------------------------
+			{
+
+				//Vidladka
+				//HAL_GPIO_WritePin(GPIOE, GPIO_PIN_5, GPIO_PIN_SET);
+
+
+				if ( f_lseek(&File, 0x8000) == FR_OK )
+				{
+
+
+					Byte_Nomber = 0;
+					bytesread = 1;
+
+					//-----------------------------------------------
+					while ( bytesread > 0 )
+					{
+						f_read(&File,rtext,sizeof(rtext),&bytesread);
+
+						__disable_irq();
+
+						FLASH_Program_Byte_Customized( 0x08008000 + Byte_Nomber, rtext[0]);
+
+						__enable_irq();
+
+						Byte_Nomber++;
+
+						File_Size++;
+					}
+					//-----------------------------------------------
+				}
+
+				else
+				{
+					Exit_Flag_FR=2;
+				}
+
+
+				f_close(&File);
+				//---------------------------------------------------
+
+				HAL_Delay(6000);
+
+				USB_Status_For_Display = USB_STAT_PROC_VERIF;
+
+
+				Verification_Error = 0;
+
+				if ( File_Size == 0 )		{   Verification_Error = 1;    }
+
+
+				if(f_open(&File, Name_For_File_Open[DispFilePos] ,FA_READ)==FR_OK)
+					//---------------------------------------------------
+					{
+
+
+					if ( f_lseek(&File, 0x8000) == FR_OK )
+					{
+
+						Byte_Nomber = 0;
+						bytesread = 1;
+
+						//-----------------------------------------------
+						while ( bytesread > 0 )
+						{
+
+							f_read(&File,rtext,sizeof(rtext),&bytesread);
+
+							if ( (*(__IO uint8_t*) (0x08008000 + Byte_Nomber) ) != rtext[0] )
+							{
+								Verification_Error = 1;
+							}
+
+
+
+
+							Byte_Nomber++;
+						}
+						//-----------------------------------------------
+
+					}
+					else
+					{
+						Exit_Flag_FR=2;
+					}
+
+
+					f_close(&File);
+
+					HAL_Delay(6000);
+
+					//---------------------------------------------------
+					}
+				else
+				{
+					Exit_Flag_FR=3;
+				}
+
+
+				if ( Byte_Nomber != File_Size )
+				{
+					Verification_Error = 1;
+				}
+
+				if ( Verification_Error == 0 )
+				{
+					USB_Status_For_Display = USB_STAT_UPDATE_OK;
+
+					while ( 1 )
+					{
+						if (RIGHT_BUTTON_Bit==1)
+						{
+							HAL_NVIC_SystemReset();
+						}
+
+					}
+
+				}
+				else
+				{
+					USB_Status_For_Display = USB_STAT_UPDATE_FAIL ;
+
+					Exit_Bit = 0;
+
+					while ( Exit_Bit == 0 )
+					{
+
+						if (DOWN_BUTTON_Bit==1)
+						{
+							Exit_Bit = 1;
+
+							DOWN_BUTTON_Bit = 0;
+
+							USB_Status_For_Display = USB_STAT_PROC_ERASE;
+
+							for (Erase_Timer=0; Erase_Timer<4000000; Erase_Timer++) {  }
+
+						}
+
+
+
+						if (UP_BUTTON_Bit==1)
+						{
+							UP_BUTTON_Bit=0;
+
+							HAL_NVIC_SystemReset();
+						}
+
+
+
+					}
+
+
+				}
+
+			}
+			else
+			{
+				Exit_Flag_FR=2;
+			}
+			//---------------------------------------------------
+		}
+		else
+		{
+			Exit_Flag_FR=1;
+		}
+		//---------------------------------------------------------
+
+		//---------------------------------------------------------
+		//If Error is Took Place - Show The Error Massage
+		if ( Exit_Flag_FR != 0 )
+		{
+			USB_Status_For_Display = USB_STAT_TIMEOUT;
+
+
+			while ( 1 )
+			{
+				if (RIGHT_BUTTON_Bit==1)
+				{
+					HAL_NVIC_SystemReset();
+				}
+			}
+
+		}
+		//---------------------------------------------------------
+
+	}
+
+	//HAL_NVIC_SystemReset();
+
+	while ( 1 ) {  }
+
+}
+
+void Read_Firmware_Version_From_File(void)
+{
+
+
+	UINT Bytes_Read;
+	char Read_Bufer[36];
+
+	uint8_t Result_1=0;
+	uint8_t Result_2=0;
+	uint8_t Result_3=0;
+
+
+	if(f_mount(&USBDISKFatFs,"0:",0)==FR_OK)
+		//---------------------------------------------------------
+	{
+		if(f_open(&File, Name_For_File_Open[DispFilePos] ,FA_READ)==FR_OK)
+			//---------------------------------------------------
+		{
+
+			if ( f_lseek(&File, 0x8400) == FR_OK )
+			{
+
+				//------------------------------------------------------------------
+				if ( (f_read(&File,Read_Bufer,2,&Bytes_Read)==FR_OK) && (Bytes_Read==2) )
+				{
+
+					Value.Type_u8_t[1] = Read_Bufer[1];
+					Value.Type_u8_t[0] = Read_Bufer[0];
+
+					strcpy(SwNewName,	DispIntToStr( Value.Type_u16_t ,0) );
+
+					Value_int16_t = Value.Type_u16_t;
+
+					Result_1 = 1;
+				}
+				//------------------------------------------------------------------
+
+				//------------------------------------------------------------------
+				if ( (f_read(&File,Read_Bufer,36,&Bytes_Read)==FR_OK) && (Bytes_Read==36) )
+				{
+					strcpy(SwNewName,	Read_Bufer );
+
+					Result_2 = 1;
+				}
+				//------------------------------------------------------------------
+
+
+			}
+
+			f_close(&File);
+			//---------------------------------------------------
+		}
+		//---------------------------------------------------
+	}
+	//---------------------------------------------------------
+
+	File_Size_Current	= File_Size_Mas[DispFilePos];
+
+
+	//if ( File_Size_Current < 524289 )
+
+
+	if ( (Result_1==0) || (Result_2==0) )
+	{
+		memset((void*)&SwNewName,0x00,sizeof(SwNewName));
+		Value_int16_t = 0;
+	}
+
+}
+
+uint8_t Try_Finde_BIN_File(void)
+{
+
+	char* strstr_bin_resalt;
+	char* strstr_BIN_resalt;
+
+	uint8_t Bin_File_is_Found_Local = 0;
+
+	//---------------------------------------------------------
+	for ( Counter_For_String=0; Counter_For_String<32; Counter_For_String++ )
+	{
+		memset(UsbFileName_For_Display[Counter_For_String],0x00,32);
+	}
+	//---------------------------------------------------------
+
+
+	if(f_mount(&USBDISKFatFs,"0:",0)==FR_OK)
+		//---------------------------------------------------------
+	{
+
+		if(f_opendir(&Main_Dir, "0:")==FR_OK)
+			//---------------------------------------------------------
+		{
+
+			File_Nomber_Counter = 0;
+			DispFileNum = 0;
+
+
+
+			while ( File_Nomber_Counter < 32 )
+				//------------------------------------------------------------------------------------------------------------------
+			{
+				if ( f_readdir(&Main_Dir, &Main_Dir_Fileinfo)==FR_OK)
+					//---------------------------------------------------------
+				{
+					if ( Main_Dir_Fileinfo.fname[0] )
+					{
+						//------------------------------------------------------------------------------------------------------------------
+						strstr_bin_resalt = strstr( Main_Dir_Fileinfo.fname,".bin" );
+						strstr_BIN_resalt = strstr( Main_Dir_Fileinfo.fname,".BIN" );
+
+						//---------------------------------------------------------
+						if ( (strstr_bin_resalt && (strstr_bin_resalt[4]==0x00) )  || (strstr_BIN_resalt && (strstr_BIN_resalt[4]==0x00) ) )
+						{
+							strncpy(UsbFileName_For_Display[ File_Nomber_Counter ], Main_Dir_Fileinfo.fname, 31);
+
+							strcpy(Name_For_File_Open[File_Nomber_Counter], Main_Dir_Fileinfo.altname);
+
+							File_Size_Mas[File_Nomber_Counter] = Main_Dir_Fileinfo.fsize;
+
+
+							File_Nomber_Counter++;
+							DispFileNum++;
+
+							Bin_File_is_Found_Local = 1;
+						}
+						//---------------------------------------------------------
+					}
+					else
+					{
+						File_Nomber_Counter=32;
+					}
+				}
+				//---------------------------------------------------------
+				else
+					//---------------------------------------------------------
+				{
+					File_Nomber_Counter=32;
+				}
+				//---------------------------------------------------------
+			}
+			//------------------------------------------------------------------------------------------------------------------
+		}
+		//---------------------------------------------------------
+	}
+	//---------------------------------------------------------
+
+	return Bin_File_is_Found_Local;
+}
+
+
+
 
 /* USER CODE END 4 */
 
