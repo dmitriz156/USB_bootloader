@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "integer.h": "c",
+        "ffconf.h": "c"
+    }
+}
