@@ -22,10 +22,11 @@ C_DEPS :=
 
 # Every subdirectory with source files must be described here
 SUBDIRS := \
-Core/Inc \
 Core/Src \
 Core/Startup \
 Drivers/STM32F4xx_HAL_Driver/Src \
+FATFS/App \
+FATFS/Target \
 Middlewares/ST/STM32_USB_Host_Library/Class/MSC/Src \
 Middlewares/ST/STM32_USB_Host_Library/Core/Src \
 Middlewares/Third_Party/FatFs/src \

@@ -56,6 +56,7 @@ extern uint8_t Read_Version_Allowed_Counter;
 
 uint32_t Operate_Led_Counter;
 
+uint16_t UART_TX_counter = 0;
 
 uint16_t DispTout=2;			// display timeout connection, sec
 
@@ -125,8 +126,6 @@ char* DispIntToStr(uint16_t data, uint8_t add)
 }
 
 
-
-
 //---------------------------------------------------------
 // void DMA1_Stream6_IRQHandler(void)		 
 // {
@@ -151,8 +150,11 @@ char* DispIntToStr(uint16_t data, uint8_t add)
 //---------------------------------------------------------	
 
 
-
-
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+	UART_TX_counter = 5;
+	HAL_UART_Transmit_DMA(&huart2, DispUart.txBuff, DISP_TX_BUFF);
+}
 
 
 
@@ -161,11 +163,14 @@ char* DispIntToStr(uint16_t data, uint8_t add)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   //HAL_TIM_IRQHandler(&htim2);
+    if (UART_TX_counter){
+    	UART_TX_counter--;
+    } else {
+		//HAL_UART_Transmit_DMA(&huart2, DispUart.txBuff, DISP_TX_BUFF);
+	}
 
-
-
-	if ( Operate_Led_Counter==1   ) { HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);	   }
-	if ( Operate_Led_Counter==20 ) { HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);	 }
+	if ( Operate_Led_Counter==1   ) { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);	   }
+	if ( Operate_Led_Counter==20 ) { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);	 }
 
 
 	Operate_Led_Counter++;
@@ -177,24 +182,24 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 
 	//-------------------------------------------------------------------------
-	if ( (HAL_GPIO_ReadPin(GPIOD,GPIO_PIN_1)==0) && (DOWN_BUTTON_Flag==0) )
+	if ( (HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)==0) && (DOWN_BUTTON_Flag==0) )
 	{
 			DOWN_BUTTON_Flag = 1;
 			DOWN_BUTTON_Bit = 1;
 	}
 
-	if (HAL_GPIO_ReadPin(GPIOD,GPIO_PIN_1)!=0)  {  DOWN_BUTTON_Flag = 0;  }
+	if (HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)!=0)  {  DOWN_BUTTON_Flag = 0;  }
 	//-------------------------------------------------------------------------
 
 
 	//-------------------------------------------------------------------------
-	if ( (HAL_GPIO_ReadPin(GPIOD,GPIO_PIN_2)==0) && (UP_BUTTON_Flag==0) )
+	if ( (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2)==0) && (UP_BUTTON_Flag==0) )
 	{
 			UP_BUTTON_Flag = 1;
 			UP_BUTTON_Bit = 1;
 	}
 
-	if (HAL_GPIO_ReadPin(GPIOD,GPIO_PIN_2)!=0)  {  UP_BUTTON_Flag = 0;  }
+	if (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2)!=0)  {  UP_BUTTON_Flag = 0;  }
 	//-------------------------------------------------------------------------
 
 

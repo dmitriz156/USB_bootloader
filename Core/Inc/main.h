@@ -42,6 +42,11 @@ extern "C" {
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
 
+extern TIM_HandleTypeDef htim2;
+
+extern UART_HandleTypeDef huart2;
+extern DMA_HandleTypeDef hdma_usart2_tx;
+
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
@@ -59,8 +64,10 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define BTN_R_Pin GPIO_PIN_8
 #define BTN_R_GPIO_Port GPIOC
+#define BTN_R_EXTI_IRQn EXTI9_5_IRQn
 #define BTN_DOWN_Pin GPIO_PIN_9
 #define BTN_DOWN_GPIO_Port GPIOC
+#define BTN_DOWN_EXTI_IRQn EXTI9_5_IRQn
 #define BTN_UP_Pin GPIO_PIN_10
 #define BTN_UP_GPIO_Port GPIOC
 #define BTN_UP_EXTI_IRQn EXTI15_10_IRQn
