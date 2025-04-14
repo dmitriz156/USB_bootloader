@@ -57,6 +57,7 @@ extern uint8_t Read_Version_Allowed_Counter;
 uint32_t Operate_Led_Counter;
 
 uint16_t UART_TX_counter = 0;
+uint16_t Button_handler_counter = 0;
 
 uint16_t DispTout=2;			// display timeout connection, sec
 
@@ -126,34 +127,295 @@ char* DispIntToStr(uint16_t data, uint8_t add)
 }
 
 
-//---------------------------------------------------------
-// void DMA1_Stream6_IRQHandler(void)		 
-// {
-	
+void ButtonHandler()
+{
+	if ( Operate_Led_Counter==1   ) { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);	   }
+		if ( Operate_Led_Counter==20 ) { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);	 }
 
-	
+
+		Operate_Led_Counter++;
+
+		if ( Operate_Led_Counter==40 ) { Operate_Led_Counter=0; }
+
+
+
+		//-------------------------------------------------------------------------
+		if ( (HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)==0) && (DOWN_BUTTON_Flag==0) )
+		{
+				DOWN_BUTTON_Flag = 1;
+				DOWN_BUTTON_Bit = 1;
+		}
+
+		if (HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)!=0)  {  DOWN_BUTTON_Flag = 0;  }
+		//-------------------------------------------------------------------------
+
+
+		//-------------------------------------------------------------------------
+		if ( (HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)==0) && (UP_BUTTON_Flag==0) )
+		{
+				UP_BUTTON_Flag = 1;
+				UP_BUTTON_Bit = 1;
+		}
+
+		if (HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)!=0)  {  UP_BUTTON_Flag = 0;  }
+		//-------------------------------------------------------------------------
+
+
+		//-------------------------------------------------------------------------
+		if ( (HAL_GPIO_ReadPin(BTN_R_GPIO_Port, BTN_R_Pin)==0) && (RIGHT_BUTTON_Flag==0) )
+		{
+				RIGHT_BUTTON_Flag = 1;
+				RIGHT_BUTTON_Bit = 1;
+		}
+
+		if (HAL_GPIO_ReadPin(BTN_R_GPIO_Port, BTN_R_Pin)!=0)  {  RIGHT_BUTTON_Flag = 0;  }
+		//-------------------------------------------------------------------------
+
+
+
+		//-------------------------------------------------------------------------
+		if ( (HAL_GPIO_ReadPin(BTN_L_GPIO_Port, BTN_L_Pin)==0) && (LEFT_BUTTON_Flag==0) )
+		{
+				LEFT_BUTTON_Flag = 1;
+				LEFT_BUTTON_Bit = 1;
+		}
+
+		if (HAL_GPIO_ReadPin(BTN_L_GPIO_Port, BTN_L_Pin)!=0)  {  LEFT_BUTTON_Flag = 0;  }
+		//-------------------------------------------------------------------------
+
+
+			//============================================================================
+			if ( Menu_Proces_Status == 0 )
+			{
+
+					//------------------------------------------------------------------------
+					if ( DOWN_BUTTON_Bit )
+					{
+							DOWN_BUTTON_Bit=0;
+							Menu_Proces_Status = 1;
+
+							Finde_BIN_Files = 1;
+					}
+					//------------------------------------------------------------------------
+
+
+					//------------------------------------------------------------------------
+					if ( UP_BUTTON_Bit )
+					{
+							UP_BUTTON_Bit=0;
+							//HAL_NVIC_SystemReset();
+					}
+					//------------------------------------------------------------------------
+
+
+					RIGHT_BUTTON_Flag = 0;
+					RIGHT_BUTTON_Bit = 0;
+
+					LEFT_BUTTON_Flag = 0;
+					LEFT_BUTTON_Bit = 0;
+
+			}
+			//============================================================================
+
+
+			//============================================================================
+			if ( Menu_Proces_Status == 1 )
+			{
+
+					//------------------------------------------------------------------------
+					if ( USB_Status_For_Menu_Item == 0 )
+					{
+							USB_Status_For_Display = USB_STAT_NO_USB;
+
+
+							//-----------------------------
+							if ( RIGHT_BUTTON_Bit )
+							{
+									RIGHT_BUTTON_Bit=0;
+									//HAL_NVIC_SystemReset();
+							}
+							//-----------------------------
+					}
+					//------------------------------------------------------------------------
+
+					//------------------------------------------------------------------------
+					if ( USB_Status_For_Menu_Item == 1 )
+					{
+							USB_Status_For_Display = USB_STAT_NO_FILE;
+							//-----------------------------
+							if ( RIGHT_BUTTON_Bit )
+							{
+									RIGHT_BUTTON_Bit=0;
+									//HAL_NVIC_SystemReset();
+							}
+							//-----------------------------
+					}
+					//------------------------------------------------------------------------
+
+					//------------------------------------------------------------------------
+					if (USB_Status_For_Menu_Item==2)
+					{
+							USB_Status_For_Display = USB_STAT_FILESEL;
+
+
+							//-----------------------------
+							if ( UP_BUTTON_Bit )
+							{
+									UP_BUTTON_Bit=0;
+
+									if ( DispFilePos>0 ) { DispFilePos--; }
+							}
+							//-----------------------------
+
+							//-----------------------------
+							if ( DOWN_BUTTON_Bit )
+							{
+									DOWN_BUTTON_Bit=0;
+
+									if ( DispFilePos<(DispFileNum-1) ) { DispFilePos++; }
+							}
+							//-----------------------------
+
+
+							//-----------------------------
+							if ( RIGHT_BUTTON_Bit )
+							{
+									RIGHT_BUTTON_Bit=0;
+
+									Menu_Proces_Status = 2;
+
+									Read_Version_Allowed_Counter = 10;
+
+									//USB_Status_For_Display = USB_STAT_UPDATE;
+
+
+
+							}
+							//-----------------------------
+
+
+							//-----------------------------
+							if ( LEFT_BUTTON_Bit )
+							{
+									LEFT_BUTTON_Bit=0;
+									//HAL_NVIC_SystemReset();
+
+									Menu_Proces_Status = 0;
+									USB_Status_For_Display = USB_STAT_BOOT;
+
+							}
+							//-----------------------------
+
+					}
+					//------------------------------------------------------------------------
+
+			}
+			//============================================================================
+
+			//============================================================================
+			if ( Menu_Proces_Status == 2 )
+			{
+							//-----------------------------------------
+							if ( ( Value_int16_t == 429 ) && ( File_Size_Current < 524289 ) )
+							{
+
+									USB_Status_For_Display = USB_STAT_UPDATE;
+
+
+									//-----------------------------
+									if ( UP_BUTTON_Bit )
+									{
+											UP_BUTTON_Bit=0;
+
+											Menu_Proces_Status = 1;
+											USB_Status_For_Display = USB_STAT_FILESEL;
+
+									}
+									//-----------------------------
+
+									//-----------------------------
+									if ( DOWN_BUTTON_Bit )
+									{
+											DOWN_BUTTON_Bit=0;
+
+											Firmware_Upgrase_Allowed_Counter = 10;
+
+											USB_Status_For_Display = USB_STAT_PROC_ERASE;
+
+											Menu_Proces_Status = 3;
+									}
+									//-----------------------------
+
+
+							}
+							else
+							{
+
+									USB_Status_For_Display = USB_STAT_PCBERR;
+
+
+									//-----------------------------
+									if ( RIGHT_BUTTON_Bit )
+									{
+											RIGHT_BUTTON_Bit=0;
+
+											Menu_Proces_Status = 1;
+											USB_Status_For_Display = USB_STAT_FILESEL;
+
+									}
+									//-----------------------------
+
+
+							}
+							//-----------------------------------------
+
+
+			}
+			//============================================================================
+
+
+			//-----------------------------------------------------------------------------------
+			if ( Read_Version_Allowed_Counter >  0 ) { Read_Version_Allowed_Counter--; }
+			if ( Read_Version_Allowed_Counter == 1 ) { Read_Version_Allowed = 1; 			 }
+			//-----------------------------------------------------------------------------------
+
+			//-----------------------------------------------------------------------------------
+			if ( Firmware_Upgrase_Allowed_Counter >  0 ) { Firmware_Upgrase_Allowed_Counter--; }
+			if ( Firmware_Upgrase_Allowed_Counter == 1 ) { Firmware_Upgrase_Allowed = 1; 			 }
+			//-----------------------------------------------------------------------------------
+}
+
+//---------------------------------------------------------
+// void DMA1_Stream6_IRQHandler(void)
+// {
+
+
+
 // 		//DMA_Reset_Interapt = (uint32_t)(DMA_IT_TCIF6 & RESERVED_MASK);
-		
+
 // 		//Reset DMA IT Flag
 // 		DMA1->HIFCR = 0x00200000;
 
 // 		//DMA Disable
 // 		DMA1_Stream6->CR &= ~((uint32_t)0x00000001);
-	
+
 // 		DispUart.packTxCnt++;		// go to next packet
 // 		DispUart.pauseTmr=1;		// start timeout
 
-	
+
 // 		//DMA_Write_and_Start();
-		
+
 // }
-//---------------------------------------------------------	
+//---------------------------------------------------------
 
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
 	UART_TX_counter = 5;
+	DispUart.packTxCnt++;		// go to next packet
+	DispUart.pauseTmr=1;		// start timeout
 	HAL_UART_Transmit_DMA(&huart2, DispUart.txBuff, DISP_TX_BUFF);
+
 }
 
 
@@ -162,275 +424,22 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 //---------------------------------------------------------
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  //HAL_TIM_IRQHandler(&htim2);
     if (UART_TX_counter){
     	UART_TX_counter--;
     } else {
 		//HAL_UART_Transmit_DMA(&huart2, DispUart.txBuff, DISP_TX_BUFF);
 	}
 
-	if ( Operate_Led_Counter==1   ) { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);	   }
-	if ( Operate_Led_Counter==20 ) { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);	 }
+    if(Button_handler_counter){
+    	Button_handler_counter--;
+    } else {
+    	Button_handler_counter = 5;
 
+    	DispTask();
 
-	Operate_Led_Counter++;
+    	ButtonHandler();
 
-	if ( Operate_Led_Counter==40 ) { Operate_Led_Counter=0; }
-
-
-	DispTask();
-
-
-	//-------------------------------------------------------------------------
-	if ( (HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)==0) && (DOWN_BUTTON_Flag==0) )
-	{
-			DOWN_BUTTON_Flag = 1;
-			DOWN_BUTTON_Bit = 1;
-	}
-
-	if (HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)!=0)  {  DOWN_BUTTON_Flag = 0;  }
-	//-------------------------------------------------------------------------
-
-
-	//-------------------------------------------------------------------------
-	if ( (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2)==0) && (UP_BUTTON_Flag==0) )
-	{
-			UP_BUTTON_Flag = 1;
-			UP_BUTTON_Bit = 1;
-	}
-
-	if (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_2)!=0)  {  UP_BUTTON_Flag = 0;  }
-	//-------------------------------------------------------------------------
-
-
-	//-------------------------------------------------------------------------
-	if ( (HAL_GPIO_ReadPin(GPIOD,GPIO_PIN_0)==0) && (RIGHT_BUTTON_Flag==0) )
-	{
-			RIGHT_BUTTON_Flag = 1;
-			RIGHT_BUTTON_Bit = 1;
-	}
-
-	if (HAL_GPIO_ReadPin(GPIOD,GPIO_PIN_0)!=0)  {  RIGHT_BUTTON_Flag = 0;  }
-	//-------------------------------------------------------------------------
-
-
-
-	//-------------------------------------------------------------------------
-	if ( (HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_3)==0) && (LEFT_BUTTON_Flag==0) )
-	{
-			LEFT_BUTTON_Flag = 1;
-			LEFT_BUTTON_Bit = 1;
-	}
-
-	if (HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_3)!=0)  {  LEFT_BUTTON_Flag = 0;  }
-	//-------------------------------------------------------------------------
-
-
-		//============================================================================
-		if ( Menu_Proces_Status == 0 )
-		{
-
-
-				//------------------------------------------------------------------------
-				if ( DOWN_BUTTON_Bit )
-				{
-						DOWN_BUTTON_Bit=0;
-						Menu_Proces_Status = 1;
-
-						Finde_BIN_Files = 1;
-				}
-				//------------------------------------------------------------------------
-
-
-				//------------------------------------------------------------------------
-				if ( UP_BUTTON_Bit )
-				{
-						UP_BUTTON_Bit=0;
-						HAL_NVIC_SystemReset();
-				}
-				//------------------------------------------------------------------------
-
-
-				RIGHT_BUTTON_Flag = 0;
-				RIGHT_BUTTON_Bit = 0;
-
-				LEFT_BUTTON_Flag = 0;
-				LEFT_BUTTON_Bit = 0;
-
-		}
-		//============================================================================
-
-
-		//============================================================================
-		if ( Menu_Proces_Status == 1 )
-		{
-
-				//------------------------------------------------------------------------
-				if ( USB_Status_For_Menu_Item == 0 )
-				{
-						USB_Status_For_Display = USB_STAT_NO_USB;
-
-
-						//-----------------------------
-						if ( RIGHT_BUTTON_Bit )
-						{
-								RIGHT_BUTTON_Bit=0;
-								HAL_NVIC_SystemReset();
-						}
-						//-----------------------------
-				}
-				//------------------------------------------------------------------------
-
-				//------------------------------------------------------------------------
-				if ( USB_Status_For_Menu_Item == 1 )
-				{
-						USB_Status_For_Display = USB_STAT_NO_FILE;
-						//-----------------------------
-						if ( RIGHT_BUTTON_Bit )
-						{
-								RIGHT_BUTTON_Bit=0;
-								HAL_NVIC_SystemReset();
-						}
-						//-----------------------------
-				}
-				//------------------------------------------------------------------------
-
-				//------------------------------------------------------------------------
-				if (USB_Status_For_Menu_Item==2)
-				{
-						USB_Status_For_Display = USB_STAT_FILESEL;
-
-
-						//-----------------------------
-						if ( UP_BUTTON_Bit )
-						{
-								UP_BUTTON_Bit=0;
-
-								if ( DispFilePos>0 ) { DispFilePos--; }
-						}
-						//-----------------------------
-
-						//-----------------------------
-						if ( DOWN_BUTTON_Bit )
-						{
-								DOWN_BUTTON_Bit=0;
-
-								if ( DispFilePos<(DispFileNum-1) ) { DispFilePos++; }
-						}
-						//-----------------------------
-
-
-						//-----------------------------
-						if ( RIGHT_BUTTON_Bit )
-						{
-								RIGHT_BUTTON_Bit=0;
-
-								Menu_Proces_Status = 2;
-
-								Read_Version_Allowed_Counter = 10;
-
-								//USB_Status_For_Display = USB_STAT_UPDATE;
-
-
-
-						}
-						//-----------------------------
-
-
-						//-----------------------------
-						if ( LEFT_BUTTON_Bit )
-						{
-								LEFT_BUTTON_Bit=0;
-								//HAL_NVIC_SystemReset();
-
-								Menu_Proces_Status = 0;
-								USB_Status_For_Display = USB_STAT_BOOT;
-
-						}
-						//-----------------------------
-
-
-				}
-				//------------------------------------------------------------------------
-
-		}
-		//============================================================================
-
-		//============================================================================
-		if ( Menu_Proces_Status == 2 )
-		{
-
-
-						//-----------------------------------------
-						if ( ( Value_int16_t == 401 ) && ( File_Size_Current < 524289 ) )
-						{
-
-								USB_Status_For_Display = USB_STAT_UPDATE;
-
-
-								//-----------------------------
-								if ( UP_BUTTON_Bit )
-								{
-										UP_BUTTON_Bit=0;
-
-										Menu_Proces_Status = 1;
-										USB_Status_For_Display = USB_STAT_FILESEL;
-
-								}
-								//-----------------------------
-
-								//-----------------------------
-								if ( DOWN_BUTTON_Bit )
-								{
-										DOWN_BUTTON_Bit=0;
-
-										Firmware_Upgrase_Allowed_Counter = 10;
-
-										USB_Status_For_Display = USB_STAT_PROC_ERASE;
-
-										Menu_Proces_Status = 3;
-								}
-								//-----------------------------
-
-
-						}
-						else
-						{
-
-								USB_Status_For_Display = USB_STAT_PCBERR;
-
-
-								//-----------------------------
-								if ( RIGHT_BUTTON_Bit )
-								{
-										RIGHT_BUTTON_Bit=0;
-
-										Menu_Proces_Status = 1;
-										USB_Status_For_Display = USB_STAT_FILESEL;
-
-								}
-								//-----------------------------
-
-
-						}
-						//-----------------------------------------
-
-
-		}
-		//============================================================================
-
-
-		//-----------------------------------------------------------------------------------
-		if ( Read_Version_Allowed_Counter >  0 ) { Read_Version_Allowed_Counter--; }
-		if ( Read_Version_Allowed_Counter == 1 ) { Read_Version_Allowed = 1; 			 }
-		//-----------------------------------------------------------------------------------
-
-		//-----------------------------------------------------------------------------------
-		if ( Firmware_Upgrase_Allowed_Counter >  0 ) { Firmware_Upgrase_Allowed_Counter--; }
-		if ( Firmware_Upgrase_Allowed_Counter == 1 ) { Firmware_Upgrase_Allowed = 1; 			 }
-		//-----------------------------------------------------------------------------------
-
-
+    }
 
 }
 
@@ -494,8 +503,6 @@ void MenuSysMsgFill(uint8_t type, char* str0, char* str1, char* str2, char* str3
 
 
 
-
-
 void DispTask(void)
 {
 	char str0[DISP_LISTPARAM_LEN];
@@ -506,13 +513,8 @@ void DispTask(void)
 	uint16_t len;
 	
 	
-	
-	
-	
 	if(DispUart.pauseTmr)
 	{
-		
-		
 		
 		DispUart.pauseTmr=0;
 		
