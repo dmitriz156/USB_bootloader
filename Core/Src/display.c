@@ -411,10 +411,13 @@ void ButtonHandler()
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-	UART_TX_counter = 5;
-	DispUart.packTxCnt++;		// go to next packet
-	DispUart.pauseTmr=1;		// start timeout
-	HAL_UART_Transmit_DMA(&huart2, DispUart.txBuff, DISP_TX_BUFF);
+	if(huart->Instance == USART2)
+	{
+		UART_TX_counter = 5;
+		DispUart.packTxCnt++;		// go to next packet
+		DispUart.pauseTmr = 1;		// start timeout
+		//HAL_UART_Transmit_DMA(&huart2, DispUart.txBuff, DISP_TX_BUFF);
+	}
 
 }
 
@@ -427,7 +430,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     if (UART_TX_counter){
     	UART_TX_counter--;
     } else {
-		//HAL_UART_Transmit_DMA(&huart2, DispUart.txBuff, DISP_TX_BUFF);
+		DispUart.pauseTmr = 0;
+		HAL_UART_Transmit_DMA(&huart2, DispUart.txBuff, DISP_TX_BUFF);
 	}
 
     if(Button_handler_counter){
@@ -823,8 +827,8 @@ void DispTask(void)
 			DispUart.txBuff[DISP_PMD0_UARTTOUT]=DispTout;		// seconds	
 		else;
 
-		
-		DMA1_Stream6->CR |= ((uint32_t)0x00000001);	
+		//HAL_UART_Transmit_DMA(&huart2, DispUart.txBuff, DISP_TX_BUFF);
+		//DMA1_Stream6->CR |= ((uint32_t)0x00000001);	
 		
 		if(Menu.startTmr)
 			Menu.startTmr--;
