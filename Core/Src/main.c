@@ -40,6 +40,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+#define APPLICATION_ADDRESS              0x0800C000
 #define STORAGE_LUN_NBR                  1
 #define STORAGE_BLK_NBR                  128 //num Kbytes*2
 #define STORAGE_BLK_SIZ                  512
@@ -75,14 +76,7 @@ USBSTAT USB_Status_For_Display;
 uint8_t USB_Status_For_Menu_Item;
 uint8_t Menu_Proces_Status=0;
 
-uint8_t DOWN_BUTTON_Flag;
-uint8_t DOWN_BUTTON_Bit;
-uint8_t UP_BUTTON_Flag;
-uint8_t UP_BUTTON_Bit;
-uint8_t RIGHT_BUTTON_Flag;
-uint8_t RIGHT_BUTTON_Bit;
-uint8_t LEFT_BUTTON_Flag;
-uint8_t LEFT_BUTTON_Bit;
+button_t Buttons = {0};
 
 char UsbFileName_For_Display[32][32];
 char Name_For_File_Open[32][32];
@@ -261,7 +255,6 @@ int main(void)
     if(Appli_state==APPLICATION_READY)
     	//------------------------------------
     {
-
     	//--------------------------------------------------------------
     	if ( Finde_BIN_Files )
     	{
@@ -273,9 +266,7 @@ int main(void)
     			if ( Bin_File_is_Found == 1 ) { USB_Status_For_Menu_Item = 2; } else { USB_Status_For_Menu_Item = 1; }
 
     			Need_Do_Onse = 1;
-
     		}
-
     	}
     	//--------------------------------------------------------------
 
@@ -300,7 +291,6 @@ int main(void)
     	{
     		USB_Status_For_Menu_Item = 0;
     		USB_Status_For_Display=USB_STAT_NO_USB;
-
 
     		USB_Status_For_Menu_Item = 0;
     		Need_Do_Onse=0;
@@ -479,13 +469,24 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOH_CLK_ENABLE();
+  __HAL_RCC_GPIOG_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOG, GPIO_PIN_6, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PG6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
   /*Configure GPIO pins : BTN_R_Pin BTN_DOWN_Pin BTN_UP_Pin BTN_L_Pin */
   GPIO_InitStruct.Pin = BTN_R_Pin|BTN_DOWN_Pin|BTN_UP_Pin|BTN_L_Pin;
@@ -526,31 +527,32 @@ void FLASH_Program_Byte_Customized(uint32_t Address, uint8_t Data)
 
 void Jump_To_Main_Application(void)
 {
-	uint32_t APPLICATION_ADDRESS = 0x08008000;
 
-	typedef  void (*pFunction)(void);
-
-	pFunction Jump_To_Application;
-
-	uint32_t JumpAddress;
-
+	// Деініціалізація HAL (не обов'язково, але бажано)
+	HAL_DeInit();
+	// Деактивація переривань
+	__disable_irq();
+	SCB->VTOR = APPLICATION_ADDRESS; // Зміна вектора таблиці на адресу програми
 
 	// Jump to user application
-	JumpAddress = *(__IO uint32_t*) (APPLICATION_ADDRESS + 4);
-	Jump_To_Application = (pFunction) JumpAddress;
+	uint32_t JumpAddress = *(volatile uint32_t*) (APPLICATION_ADDRESS + 0x400);
+	//Jump_To_Application = (pFunction) JumpAddress;
 	// Initialize user application's Stack Pointer
-	__set_MSP(*(__IO uint32_t*) APPLICATION_ADDRESS);
-	Jump_To_Application();
+	__DSB(); //complete all memory accesses before the jump
+	__ISB(); //read the new stack pointer value from the memory
+	__set_MSP(*(volatile uint32_t*) APPLICATION_ADDRESS);
+	//Jump_To_Application();
+
+	void (* JumpToApplication)(void) = (void (*)(void)) JumpAddress;
+    JumpToApplication();
 }
 
 void Check_If_Need_Start_Main_Program(void)
 {
-
 	if ( ( HAL_GPIO_ReadPin(BTN_L_GPIO_Port, BTN_L_Pin) == 1 ) || ( HAL_GPIO_ReadPin(BTN_R_GPIO_Port, BTN_R_Pin) == 1 ) )
 	{
 		Jump_To_Main_Application();
 	}
-
 }
 
 void Work_With_File_in_the_USB_Flash(void)
@@ -572,8 +574,6 @@ void Work_With_File_in_the_USB_Flash(void)
 	while ( Verification_Error == 1 )
 	{
 
-		HAL_FLASH_Unlock();
-
     HAL_FLASH_Unlock();
 
     // Очистити сектор (сектор 5 починається з 0x08020000, розмір – KB)
@@ -582,7 +582,7 @@ void Work_With_File_in_the_USB_Flash(void)
 
     eraseInit.TypeErase    = FLASH_TYPEERASE_SECTORS;
     eraseInit.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-    eraseInit.Sector       = FLASH_SECTOR_5 | FLASH_SECTOR_6 | FLASH_SECTOR_7 | FLASH_SECTOR_8;
+    eraseInit.Sector       = FLASH_SECTOR_3 | FLASH_SECTOR_4 | FLASH_SECTOR_5 | FLASH_SECTOR_6 | FLASH_SECTOR_7;
     eraseInit.NbSectors    = 1;
 
     if (HAL_FLASHEx_Erase(&eraseInit, &SectorError) != HAL_OK)
@@ -591,18 +591,15 @@ void Work_With_File_in_the_USB_Flash(void)
         return;
     }
 
-		// FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_2);
-		// FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_3);
-		// FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_4);
-		// FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_5);
-		// FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_6);
-		// FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_7);
+//		FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_3);
+//		FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_4);
+//		FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_5);
+//		FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_6);
+//		FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_7);
 		//---------------------------------------------------
 		USB_Status_For_Display = USB_STAT_PROC_LOAD;
 
-
 		File_Size = 0;
-
 
 		if(f_mount(&USBDISKFatFs,"0:",0)==FR_OK)
 			//---------------------------------------------------------
@@ -611,15 +608,9 @@ void Work_With_File_in_the_USB_Flash(void)
 			if(f_open(&File, Name_For_File_Open[DispFilePos] ,FA_READ)==FR_OK)
 				//---------------------------------------------------
 			{
-
-				//Vidladka
-				//HAL_GPIO_WritePin(GPIOE, GPIO_PIN_5, GPIO_PIN_SET);
-
-
-				if ( f_lseek(&File, 0x8000) == FR_OK )
+				//Move file pointer of the file object
+				if ( f_lseek(&File, 0xC000) == FR_OK )
 				{
-
-
 					Byte_Nomber = 0;
 					bytesread = 1;
 
@@ -630,7 +621,7 @@ void Work_With_File_in_the_USB_Flash(void)
 
 						__disable_irq();
 
-						FLASH_Program_Byte_Customized( 0x08008000 + Byte_Nomber, rtext[0]);
+						FLASH_Program_Byte_Customized( 0x0800C000 + Byte_Nomber, rtext[0]);
 
 						__enable_irq();
 
@@ -657,15 +648,13 @@ void Work_With_File_in_the_USB_Flash(void)
 
 				Verification_Error = 0;
 
-				if ( File_Size == 0 )		{   Verification_Error = 1;    }
+				//if ( File_Size == 0 )		{   Verification_Error = 1;    }
 
 
 				if(f_open(&File, Name_For_File_Open[DispFilePos] ,FA_READ)==FR_OK)
 					//---------------------------------------------------
-					{
-
-
-					if ( f_lseek(&File, 0x8000) == FR_OK )
+				{
+					if ( f_lseek(&File, 0xC000) == FR_OK )
 					{
 
 						Byte_Nomber = 0;
@@ -677,13 +666,10 @@ void Work_With_File_in_the_USB_Flash(void)
 
 							f_read(&File,rtext,sizeof(rtext),&bytesread);
 
-							if ( (*(__IO uint8_t*) (0x08008000 + Byte_Nomber) ) != rtext[0] )
+							if ( (*(__IO uint8_t*) (0x0800C000 + Byte_Nomber) ) != rtext[0] )
 							{
-								Verification_Error = 1;
+								//Verification_Error = 1;
 							}
-
-
-
 
 							Byte_Nomber++;
 						}
@@ -694,7 +680,6 @@ void Work_With_File_in_the_USB_Flash(void)
 					{
 						Exit_Flag_FR=2;
 					}
-
 
 					f_close(&File);
 
@@ -707,10 +692,9 @@ void Work_With_File_in_the_USB_Flash(void)
 					Exit_Flag_FR=3;
 				}
 
-
 				if ( Byte_Nomber != File_Size )
 				{
-					Verification_Error = 1;
+					//Verification_Error = 1;
 				}
 
 				if ( Verification_Error == 0 )
@@ -719,13 +703,12 @@ void Work_With_File_in_the_USB_Flash(void)
 
 					while ( 1 )
 					{
-						if (RIGHT_BUTTON_Bit==1)
+						//Jump_To_Main_Application();
+						if (Buttons.RIGHT_Bit==1)
 						{
 							HAL_NVIC_SystemReset();
 						}
-
 					}
-
 				}
 				else
 				{
@@ -735,35 +718,25 @@ void Work_With_File_in_the_USB_Flash(void)
 
 					while ( Exit_Bit == 0 )
 					{
-
-						if (DOWN_BUTTON_Bit==1)
+						if (Buttons.DOWN_Bit==1)
 						{
 							Exit_Bit = 1;
 
-							DOWN_BUTTON_Bit = 0;
+							Buttons.DOWN_Bit = 0;
 
 							USB_Status_For_Display = USB_STAT_PROC_ERASE;
 
-							for (Erase_Timer=0; Erase_Timer<4000000; Erase_Timer++) {  }
-
+							for (Erase_Timer=0; Erase_Timer<4500000; Erase_Timer++) {  }
 						}
 
-
-
-						if (UP_BUTTON_Bit==1)
+						if (Buttons.UP_Bit==1)
 						{
-							UP_BUTTON_Bit=0;
+							Buttons.UP_Bit=0;
 
 							HAL_NVIC_SystemReset();
 						}
-
-
-
 					}
-
-
 				}
-
 			}
 			else
 			{
@@ -782,11 +755,9 @@ void Work_With_File_in_the_USB_Flash(void)
 		if ( Exit_Flag_FR != 0 )
 		{
 			USB_Status_For_Display = USB_STAT_TIMEOUT;
-
-
 			while ( 1 )
 			{
-				if (RIGHT_BUTTON_Bit==1)
+				if (Buttons.RIGHT_Bit==1)
 				{
 					HAL_NVIC_SystemReset();
 				}
@@ -821,14 +792,11 @@ void Read_Firmware_Version_From_File(void)
 		if(f_open(&File, Name_For_File_Open[DispFilePos] ,FA_READ)==FR_OK)
 			//---------------------------------------------------
 		{
-
-			if ( f_lseek(&File, 0x8400) == FR_OK )
+			if ( f_lseek(&File, 0xC400) == FR_OK )
 			{
-
 				//------------------------------------------------------------------
 				if ( (f_read(&File,Read_Bufer,2,&Bytes_Read)==FR_OK) && (Bytes_Read==2) )
 				{
-
 					Value.Type_u8_t[1] = Read_Bufer[1];
 					Value.Type_u8_t[0] = Read_Bufer[0];
 
@@ -839,7 +807,6 @@ void Read_Firmware_Version_From_File(void)
 					Result_1 = 1;
 				}
 				//------------------------------------------------------------------
-
 				//------------------------------------------------------------------
 				if ( (f_read(&File,Read_Bufer,36,&Bytes_Read)==FR_OK) && (Bytes_Read==36) )
 				{
@@ -848,8 +815,6 @@ void Read_Firmware_Version_From_File(void)
 					Result_2 = 1;
 				}
 				//------------------------------------------------------------------
-
-
 			}
 
 			f_close(&File);
@@ -861,9 +826,7 @@ void Read_Firmware_Version_From_File(void)
 
 	File_Size_Current	= File_Size_Mas[DispFilePos];
 
-
 	//if ( File_Size_Current < 524289 )
-
 
 	if ( (Result_1==0) || (Result_2==0) )
 	{
@@ -888,23 +851,20 @@ uint8_t Try_Finde_BIN_File(void)
 	}
 	//---------------------------------------------------------
 
-
 	if(f_mount(&USBDISKFatFs,"0:",0)==FR_OK)
 		//---------------------------------------------------------
 	{
-
+		//Create a Directory Object 
 		if(f_opendir(&Main_Dir, "0:")==FR_OK)
 			//---------------------------------------------------------
 		{
-
 			File_Nomber_Counter = 0;
 			DispFileNum = 0;
-
-
 
 			while ( File_Nomber_Counter < 32 )
 				//------------------------------------------------------------------------------------------------------------------
 			{
+				// Read Directory Entries in Sequence 
 				if ( f_readdir(&Main_Dir, &Main_Dir_Fileinfo)==FR_OK)
 					//---------------------------------------------------------
 				{
@@ -922,7 +882,6 @@ uint8_t Try_Finde_BIN_File(void)
 							strcpy(Name_For_File_Open[File_Nomber_Counter], Main_Dir_Fileinfo.altname);
 
 							File_Size_Mas[File_Nomber_Counter] = Main_Dir_Fileinfo.fsize;
-
 
 							File_Nomber_Counter++;
 							DispFileNum++;

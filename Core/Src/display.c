@@ -17,15 +17,6 @@ extern USBSTAT USB_Status_For_Display;
 extern uint8_t USB_Status_For_Menu_Item;
 extern uint8_t Menu_Proces_Status;
 
-extern	uint8_t DOWN_BUTTON_Flag;
-extern	uint8_t DOWN_BUTTON_Bit;
-extern	uint8_t UP_BUTTON_Flag;
-extern	uint8_t UP_BUTTON_Bit;
-extern  uint8_t RIGHT_BUTTON_Flag;
-extern  uint8_t RIGHT_BUTTON_Bit;
-extern  uint8_t LEFT_BUTTON_Flag;
-extern  uint8_t LEFT_BUTTON_Bit;
-
 
 extern char UsbFileName_For_Display[32][32];
 
@@ -132,247 +123,218 @@ void ButtonHandler()
 	if ( Operate_Led_Counter==1   ) { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);	   }
 		if ( Operate_Led_Counter==20 ) { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);	 }
 
-
 		Operate_Led_Counter++;
 
 		if ( Operate_Led_Counter==40 ) { Operate_Led_Counter=0; }
 
-
-
 		//-------------------------------------------------------------------------
-		if ( (HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)==0) && (DOWN_BUTTON_Flag==0) )
+		if ( (HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)==0) && (Buttons.DOWN_Flag==0) )
 		{
-				DOWN_BUTTON_Flag = 1;
-				DOWN_BUTTON_Bit = 1;
+				Buttons.DOWN_Flag = 1;
+				Buttons.DOWN_Bit = 1;
 		}
 
-		if (HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)!=0)  {  DOWN_BUTTON_Flag = 0;  }
+		if (HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)!=0)  {  Buttons.DOWN_Flag = 0;  }
 		//-------------------------------------------------------------------------
 
-
 		//-------------------------------------------------------------------------
-		if ( (HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)==0) && (UP_BUTTON_Flag==0) )
+		if ( (HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)==0) && (Buttons.UP_Flag==0) )
 		{
-				UP_BUTTON_Flag = 1;
-				UP_BUTTON_Bit = 1;
+				Buttons.UP_Flag = 1;
+				Buttons.UP_Bit = 1;
 		}
 
-		if (HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)!=0)  {  UP_BUTTON_Flag = 0;  }
+		if (HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)!=0)  {  Buttons.UP_Flag = 0;  }
 		//-------------------------------------------------------------------------
 
-
 		//-------------------------------------------------------------------------
-		if ( (HAL_GPIO_ReadPin(BTN_R_GPIO_Port, BTN_R_Pin)==0) && (RIGHT_BUTTON_Flag==0) )
+		if ( (HAL_GPIO_ReadPin(BTN_R_GPIO_Port, BTN_R_Pin)==0) && (Buttons.RIGHT_Flag==0) )
 		{
-				RIGHT_BUTTON_Flag = 1;
-				RIGHT_BUTTON_Bit = 1;
+				Buttons.RIGHT_Flag = 1;
+				Buttons.RIGHT_Bit = 1;
 		}
 
-		if (HAL_GPIO_ReadPin(BTN_R_GPIO_Port, BTN_R_Pin)!=0)  {  RIGHT_BUTTON_Flag = 0;  }
+		if (HAL_GPIO_ReadPin(BTN_R_GPIO_Port, BTN_R_Pin)!=0)  {  Buttons.RIGHT_Flag = 0;  }
 		//-------------------------------------------------------------------------
 
-
-
 		//-------------------------------------------------------------------------
-		if ( (HAL_GPIO_ReadPin(BTN_L_GPIO_Port, BTN_L_Pin)==0) && (LEFT_BUTTON_Flag==0) )
+		if ( (HAL_GPIO_ReadPin(BTN_L_GPIO_Port, BTN_L_Pin)==0) && (Buttons.LEFT_Flag==0) )
 		{
-				LEFT_BUTTON_Flag = 1;
-				LEFT_BUTTON_Bit = 1;
+				Buttons.LEFT_Flag = 1;
+				Buttons.LEFT_Bit = 1;
 		}
 
-		if (HAL_GPIO_ReadPin(BTN_L_GPIO_Port, BTN_L_Pin)!=0)  {  LEFT_BUTTON_Flag = 0;  }
+		if (HAL_GPIO_ReadPin(BTN_L_GPIO_Port, BTN_L_Pin)!=0)  {  Buttons.LEFT_Flag = 0;  }
 		//-------------------------------------------------------------------------
-
 
 			//============================================================================
 			if ( Menu_Proces_Status == 0 )
 			{
+				//------------------------------------------------------------------------
+				if ( Buttons.DOWN_Bit )
+				{
+						Buttons.DOWN_Bit=0;
+						Menu_Proces_Status = 1;
 
-					//------------------------------------------------------------------------
-					if ( DOWN_BUTTON_Bit )
-					{
-							DOWN_BUTTON_Bit=0;
-							Menu_Proces_Status = 1;
+						Finde_BIN_Files = 1;
+				}
+				//------------------------------------------------------------------------
+				//------------------------------------------------------------------------
+				if ( Buttons.UP_Bit )
+				{
+						Buttons.UP_Bit=0;
+						HAL_NVIC_SystemReset();
+				}
+				//------------------------------------------------------------------------
 
-							Finde_BIN_Files = 1;
-					}
-					//------------------------------------------------------------------------
+				Buttons.RIGHT_Flag = 0;
+				Buttons.RIGHT_Bit = 0;
 
-
-					//------------------------------------------------------------------------
-					if ( UP_BUTTON_Bit )
-					{
-							UP_BUTTON_Bit=0;
-							//HAL_NVIC_SystemReset();
-					}
-					//------------------------------------------------------------------------
-
-
-					RIGHT_BUTTON_Flag = 0;
-					RIGHT_BUTTON_Bit = 0;
-
-					LEFT_BUTTON_Flag = 0;
-					LEFT_BUTTON_Bit = 0;
+				Buttons.LEFT_Flag = 0;
+				Buttons.LEFT_Bit = 0;
 
 			}
 			//============================================================================
 
-
 			//============================================================================
 			if ( Menu_Proces_Status == 1 )
 			{
-
-					//------------------------------------------------------------------------
-					if ( USB_Status_For_Menu_Item == 0 )
-					{
-							USB_Status_For_Display = USB_STAT_NO_USB;
-
-
-							//-----------------------------
-							if ( RIGHT_BUTTON_Bit )
-							{
-									RIGHT_BUTTON_Bit=0;
-									//HAL_NVIC_SystemReset();
-							}
-							//-----------------------------
-					}
-					//------------------------------------------------------------------------
-
-					//------------------------------------------------------------------------
-					if ( USB_Status_For_Menu_Item == 1 )
-					{
-							USB_Status_For_Display = USB_STAT_NO_FILE;
-							//-----------------------------
-							if ( RIGHT_BUTTON_Bit )
-							{
-									RIGHT_BUTTON_Bit=0;
-									//HAL_NVIC_SystemReset();
-							}
-							//-----------------------------
-					}
-					//------------------------------------------------------------------------
-
-					//------------------------------------------------------------------------
-					if (USB_Status_For_Menu_Item==2)
-					{
-							USB_Status_For_Display = USB_STAT_FILESEL;
+				//------------------------------------------------------------------------
+				if ( USB_Status_For_Menu_Item == 0 )
+				{
+						USB_Status_For_Display = USB_STAT_NO_USB;
 
 
-							//-----------------------------
-							if ( UP_BUTTON_Bit )
-							{
-									UP_BUTTON_Bit=0;
+						//-----------------------------
+						if ( Buttons.RIGHT_Bit )
+						{
+								Buttons.RIGHT_Bit=0;
+								//HAL_NVIC_SystemReset();
+						}
+						//-----------------------------
+				}
+				//------------------------------------------------------------------------
+				//------------------------------------------------------------------------
+				if ( USB_Status_For_Menu_Item == 1 )
+				{
+						USB_Status_For_Display = USB_STAT_NO_FILE;
+						//-----------------------------
+						if ( Buttons.RIGHT_Bit )
+						{
+								Buttons.RIGHT_Bit=0;
+								//HAL_NVIC_SystemReset();
+						}
+						//-----------------------------
+				}
+				//------------------------------------------------------------------------
 
-									if ( DispFilePos>0 ) { DispFilePos--; }
-							}
-							//-----------------------------
+				//------------------------------------------------------------------------
+				if (USB_Status_For_Menu_Item==2)
+				{
+						USB_Status_For_Display = USB_STAT_FILESEL;
 
-							//-----------------------------
-							if ( DOWN_BUTTON_Bit )
-							{
-									DOWN_BUTTON_Bit=0;
+						//-----------------------------
+						if ( Buttons.UP_Bit )
+						{
+								Buttons.UP_Bit=0;
 
-									if ( DispFilePos<(DispFileNum-1) ) { DispFilePos++; }
-							}
-							//-----------------------------
+								if ( DispFilePos>0 ) { DispFilePos--; }
+						}
+						//-----------------------------
 
+						//-----------------------------
+						if ( Buttons.DOWN_Bit )
+						{
+								Buttons.DOWN_Bit=0;
 
-							//-----------------------------
-							if ( RIGHT_BUTTON_Bit )
-							{
-									RIGHT_BUTTON_Bit=0;
+								if ( DispFilePos<(DispFileNum-1) ) { DispFilePos++; }
+						}
+						//-----------------------------
 
-									Menu_Proces_Status = 2;
+						//-----------------------------
+						if ( Buttons.RIGHT_Bit )
+						{
+								Buttons.RIGHT_Bit=0;
 
-									Read_Version_Allowed_Counter = 10;
+								Menu_Proces_Status = 2;
 
-									//USB_Status_For_Display = USB_STAT_UPDATE;
+								Read_Version_Allowed_Counter = 10;
 
+								USB_Status_For_Display = USB_STAT_UPDATE;
 
+						}
+						//-----------------------------
+						//-----------------------------
+						if ( Buttons.LEFT_Bit )
+						{
+								Buttons.LEFT_Bit=0;
+								HAL_NVIC_SystemReset();
 
-							}
-							//-----------------------------
+								Menu_Proces_Status = 0;
+								USB_Status_For_Display = USB_STAT_BOOT;
 
-
-							//-----------------------------
-							if ( LEFT_BUTTON_Bit )
-							{
-									LEFT_BUTTON_Bit=0;
-									//HAL_NVIC_SystemReset();
-
-									Menu_Proces_Status = 0;
-									USB_Status_For_Display = USB_STAT_BOOT;
-
-							}
-							//-----------------------------
-
-					}
-					//------------------------------------------------------------------------
-
+						}
+						//-----------------------------
+				}
+				//------------------------------------------------------------------------
 			}
 			//============================================================================
 
 			//============================================================================
 			if ( Menu_Proces_Status == 2 )
 			{
-							//-----------------------------------------
-							if ( ( Value_int16_t == 429 ) && ( File_Size_Current < 524289 ) )
-							{
+				//-----------------------------------------
+				if (1/*( Value_int16_t == 429 ) /*&& ( File_Size_Current < 524289 )*/ )
+				{
 
-									USB_Status_For_Display = USB_STAT_UPDATE;
+						USB_Status_For_Display = USB_STAT_UPDATE;
 
+						//-----------------------------
+						if ( Buttons.UP_Bit )
+						{
+								Buttons.UP_Bit=0;
 
-									//-----------------------------
-									if ( UP_BUTTON_Bit )
-									{
-											UP_BUTTON_Bit=0;
+								Menu_Proces_Status = 1;
+								USB_Status_For_Display = USB_STAT_FILESEL;
 
-											Menu_Proces_Status = 1;
-											USB_Status_For_Display = USB_STAT_FILESEL;
+						}
+						//-----------------------------
 
-									}
-									//-----------------------------
+						//-----------------------------
+						if ( Buttons.DOWN_Bit )
+						{
+								Buttons.DOWN_Bit=0;
 
-									//-----------------------------
-									if ( DOWN_BUTTON_Bit )
-									{
-											DOWN_BUTTON_Bit=0;
+								Firmware_Upgrase_Allowed_Counter = 10;
 
-											Firmware_Upgrase_Allowed_Counter = 10;
+								USB_Status_For_Display = USB_STAT_PROC_ERASE;
 
-											USB_Status_For_Display = USB_STAT_PROC_ERASE;
+								Menu_Proces_Status = 3;
+						}
+						//-----------------------------
 
-											Menu_Proces_Status = 3;
-									}
-									//-----------------------------
+				}
+				else
+				{
 
+						USB_Status_For_Display = USB_STAT_PCBERR;
 
-							}
-							else
-							{
+						//-----------------------------
+						if ( Buttons.RIGHT_Bit )
+						{
+								Buttons.RIGHT_Bit=0;
 
-									USB_Status_For_Display = USB_STAT_PCBERR;
+								Menu_Proces_Status = 1;
+								USB_Status_For_Display = USB_STAT_FILESEL;
 
+						}
+						//-----------------------------
 
-									//-----------------------------
-									if ( RIGHT_BUTTON_Bit )
-									{
-											RIGHT_BUTTON_Bit=0;
-
-											Menu_Proces_Status = 1;
-											USB_Status_For_Display = USB_STAT_FILESEL;
-
-									}
-									//-----------------------------
-
-
-							}
-							//-----------------------------------------
-
+				}
+				//-----------------------------------------
 
 			}
 			//============================================================================
-
 
 			//-----------------------------------------------------------------------------------
 			if ( Read_Version_Allowed_Counter >  0 ) { Read_Version_Allowed_Counter--; }
@@ -449,40 +411,36 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 
 
-
-
-
 //======================================================	
 void DispInit(void)
 {
-			char String_L32_For_Disp_Init[32];	
-			uint8_t Counter_For_Disp_Init;
+		char String_L32_For_Disp_Init[32];	
+		uint8_t Counter_For_Disp_Init;
 
-	
-			memset((void*)&DispUart,0x00,sizeof(DispUart));
-			
-			// prepare number of packet for each type of display pages
-			DispUart.txPackNum[DISP_PAGE_HELLO]	= DISP_PAGE_HELLO_PACK_NUM;
-			DispUart.txPackNum[DISP_PAGE_MAIN]	= DISP_PAGE_MAIN_PACK_NUM;
-			DispUart.txPackNum[DISP_PAGE_LIST]	= DISP_PAGE_LIST_PACK_NUM;
-			DispUart.txPackNum[DISP_PAGE_EMPTY]	= DISP_PAGE_EMPTY_PACK_NUM;
-			DispUart.txPackNum[DISP_PAGE_UNDEF]	= DISP_PAGE_UNDEF_PACK_NUM;
-			
-			DispUart.pauseTmr=1;		// start of pause
-			
-			memset((void*)&Menu,0x00,sizeof(Menu));
-			Menu.startTmr=DISP_START_TMR;
-								
-			strcpy(SwCurrName,	DispIntToStr( *(__IO uint16_t*) 0x08008400 ,0) );
 
-			
-			for ( Counter_For_Disp_Init = 0; Counter_For_Disp_Init<32; Counter_For_Disp_Init++ )
-			{		
-					String_L32_For_Disp_Init[ Counter_For_Disp_Init ] = *(__IO uint8_t*) (0x08008402 + Counter_For_Disp_Init);			
-			}
-			
-			
-			strcpy(SwCurrName,	String_L32_For_Disp_Init );
+		memset((void*)&DispUart,0x00,sizeof(DispUart));
+		
+		// prepare number of packet for each type of display pages
+		DispUart.txPackNum[DISP_PAGE_HELLO]	= DISP_PAGE_HELLO_PACK_NUM;
+		DispUart.txPackNum[DISP_PAGE_MAIN]	= DISP_PAGE_MAIN_PACK_NUM;
+		DispUart.txPackNum[DISP_PAGE_LIST]	= DISP_PAGE_LIST_PACK_NUM;
+		DispUart.txPackNum[DISP_PAGE_EMPTY]	= DISP_PAGE_EMPTY_PACK_NUM;
+		DispUart.txPackNum[DISP_PAGE_UNDEF]	= DISP_PAGE_UNDEF_PACK_NUM;
+		
+		DispUart.pauseTmr=1;		// start of pause
+		
+		memset((void*)&Menu,0x00,sizeof(Menu));
+		Menu.startTmr=DISP_START_TMR;
+							
+		strcpy(SwCurrName,	DispIntToStr( *(__IO uint16_t*) 0x0800C400, 0) );//0x08008400
+
+		
+		for ( Counter_For_Disp_Init = 0; Counter_For_Disp_Init<32; Counter_For_Disp_Init++ )
+		{		
+				String_L32_For_Disp_Init[ Counter_For_Disp_Init ] = *(__IO uint8_t*) (0x0800C402 + Counter_For_Disp_Init);//0x08008402
+		}
+		
+		strcpy(SwCurrName,	String_L32_For_Disp_Init );
 											
 }
 //======================================================	
@@ -505,8 +463,6 @@ void MenuSysMsgFill(uint8_t type, char* str0, char* str1, char* str2, char* str3
 	if(str4)	strncpy((void*)&DispUart.txBuff[DISP_SYS_MSG_STR4],str4,DISP_SYS_MSG_STR_LEN);							
 }
 
-
-
 void DispTask(void)
 {
 	char str0[DISP_LISTPARAM_LEN];
@@ -516,12 +472,9 @@ void DispTask(void)
 	char str4[DISP_LISTPARAM_LEN];
 	uint16_t len;
 	
-	
 	if(DispUart.pauseTmr)
 	{
-		
 		DispUart.pauseTmr=0;
-		
 		DispUart.shiftTmr++;
 		if(DispUart.shiftTmr>=DISP_SHIFT_TMR)
 		{
@@ -602,13 +555,10 @@ void DispTask(void)
 					Menu.sysMsg=MENU_SM_PCBERR;					
 					break;
 
-				
 				case USB_STAT_TIMEOUT:
 					Menu.pageIndx=MENU_PAGE_EMPTY;
 					Menu.sysMsg=MENU_SM_TIMOUT_ERROR;					
 					break;
-				
-				
 				
 				default:
 					Menu.pageIndx=MENU_PAGE_EMPTY;
@@ -651,7 +601,7 @@ void DispTask(void)
 				// !!! WARNING !!!
 				// DO NOT EXCEED 12 SYMBOLS FOR EACH STRING
 				case MENU_SM_BOOT:					// start bootloader? 								Buttons: NO-YES
-					MenuSysMsgFill(DISP_SYS_MSG_QUE,		"START","BOOTLOADER","v.1.2 ?",0,0);
+					MenuSysMsgFill(DISP_SYS_MSG_QUE,		"START","BOOTLOADER","RBv.1.2 ?",0,0);
 					break;	
 				case MENU_SM_NO_USB:				// no USB-flash drive. 							Buttons: OK
 					MenuSysMsgFill(DISP_SYS_MSG_WRN_OK,	"USB-FLASH","IS NOT","CONNECTED!",0,0);
@@ -692,7 +642,7 @@ void DispTask(void)
 					break;	
 				
 				case MENU_SM_PCBERR:			// PCB code is failed
-					MenuSysMsgFill(DISP_SYS_MSG_WRN_OK,"NEW FIRMWARE","IS NOT","SUITABLE","FOR PCB401!",0);
+					MenuSysMsgFill(DISP_SYS_MSG_WRN_OK,"NEW FIRMWARE","IS NOT","SUITABLE","FOR PCB429!",0);
 					break;
 
 

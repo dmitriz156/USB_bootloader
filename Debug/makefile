@@ -60,6 +60,12 @@ default.size.stdout \
 OBJDUMP_LIST += \
 F429_USB_bootloader.list \
 
+OBJCOPY_HEX += \
+F429_USB_bootloader.hex \
+
+OBJCOPY_BIN += \
+F429_USB_bootloader.bin \
+
 
 # All Target
 all: main-build
@@ -83,12 +89,22 @@ F429_USB_bootloader.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_D
 	@echo 'Finished building: $@'
 	@echo ' '
 
+F429_USB_bootloader.hex: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objcopy  -O ihex $(EXECUTABLES) "F429_USB_bootloader.hex"
+	@echo 'Finished building: $@'
+	@echo ' '
+
+F429_USB_bootloader.bin: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "F429_USB_bootloader.bin"
+	@echo 'Finished building: $@'
+	@echo ' '
+
 # Other Targets
 clean:
-	-$(RM) F429_USB_bootloader.elf F429_USB_bootloader.list F429_USB_bootloader.map default.size.stdout
+	-$(RM) F429_USB_bootloader.bin F429_USB_bootloader.elf F429_USB_bootloader.hex F429_USB_bootloader.list F429_USB_bootloader.map default.size.stdout
 	-@echo ' '
 
-secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)
+secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST) $(OBJCOPY_HEX) $(OBJCOPY_BIN)
 
 fail-specified-linker-script-missing:
 	@echo 'Error: Cannot find the specified linker script. Check the linker settings in the build configuration.'

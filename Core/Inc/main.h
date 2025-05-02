@@ -28,6 +28,7 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
+#include <stdbool.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -76,6 +77,20 @@ void Error_Handler(void);
 #define BTN_L_EXTI_IRQn EXTI15_10_IRQn
 
 /* USER CODE BEGIN Private defines */
+
+typedef struct
+{
+  bool DOWN_Flag ;
+  bool DOWN_Bit ;
+  bool UP_Flag;
+  bool UP_Bit;
+  bool RIGHT_Flag;
+  bool RIGHT_Bit;
+  bool LEFT_Flag;
+  bool LEFT_Bit;
+} button_t;
+
+extern button_t Buttons;
 
 /* USER CODE END Private defines */
 
