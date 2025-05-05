@@ -126,47 +126,38 @@ void ButtonHandler()
 		Operate_Led_Counter++;
 
 		if ( Operate_Led_Counter==40 ) { Operate_Led_Counter=0; }
-
 		//-------------------------------------------------------------------------
 		if ( (HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)==0) && (Buttons.DOWN_Flag==0) )
 		{
 				Buttons.DOWN_Flag = 1;
 				Buttons.DOWN_Bit = 1;
 		}
-
 		if (HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)!=0)  {  Buttons.DOWN_Flag = 0;  }
 		//-------------------------------------------------------------------------
-
 		//-------------------------------------------------------------------------
 		if ( (HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)==0) && (Buttons.UP_Flag==0) )
 		{
 				Buttons.UP_Flag = 1;
 				Buttons.UP_Bit = 1;
 		}
-
 		if (HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)!=0)  {  Buttons.UP_Flag = 0;  }
 		//-------------------------------------------------------------------------
-
 		//-------------------------------------------------------------------------
 		if ( (HAL_GPIO_ReadPin(BTN_R_GPIO_Port, BTN_R_Pin)==0) && (Buttons.RIGHT_Flag==0) )
 		{
 				Buttons.RIGHT_Flag = 1;
 				Buttons.RIGHT_Bit = 1;
 		}
-
 		if (HAL_GPIO_ReadPin(BTN_R_GPIO_Port, BTN_R_Pin)!=0)  {  Buttons.RIGHT_Flag = 0;  }
 		//-------------------------------------------------------------------------
-
 		//-------------------------------------------------------------------------
 		if ( (HAL_GPIO_ReadPin(BTN_L_GPIO_Port, BTN_L_Pin)==0) && (Buttons.LEFT_Flag==0) )
 		{
 				Buttons.LEFT_Flag = 1;
 				Buttons.LEFT_Bit = 1;
 		}
-
 		if (HAL_GPIO_ReadPin(BTN_L_GPIO_Port, BTN_L_Pin)!=0)  {  Buttons.LEFT_Flag = 0;  }
 		//-------------------------------------------------------------------------
-
 			//============================================================================
 			if ( Menu_Proces_Status == 0 )
 			{
@@ -186,16 +177,12 @@ void ButtonHandler()
 						HAL_NVIC_SystemReset();
 				}
 				//------------------------------------------------------------------------
-
 				Buttons.RIGHT_Flag = 0;
 				Buttons.RIGHT_Bit = 0;
-
 				Buttons.LEFT_Flag = 0;
 				Buttons.LEFT_Bit = 0;
-
 			}
 			//============================================================================
-
 			//============================================================================
 			if ( Menu_Proces_Status == 1 )
 			{
@@ -203,13 +190,11 @@ void ButtonHandler()
 				if ( USB_Status_For_Menu_Item == 0 )
 				{
 						USB_Status_For_Display = USB_STAT_NO_USB;
-
-
 						//-----------------------------
 						if ( Buttons.RIGHT_Bit )
 						{
 								Buttons.RIGHT_Bit=0;
-								//HAL_NVIC_SystemReset();
+								HAL_NVIC_SystemReset();
 						}
 						//-----------------------------
 				}
@@ -222,12 +207,11 @@ void ButtonHandler()
 						if ( Buttons.RIGHT_Bit )
 						{
 								Buttons.RIGHT_Bit=0;
-								//HAL_NVIC_SystemReset();
+								HAL_NVIC_SystemReset();
 						}
 						//-----------------------------
 				}
 				//------------------------------------------------------------------------
-
 				//------------------------------------------------------------------------
 				if (USB_Status_For_Menu_Item==2)
 				{
@@ -241,7 +225,6 @@ void ButtonHandler()
 								if ( DispFilePos>0 ) { DispFilePos--; }
 						}
 						//-----------------------------
-
 						//-----------------------------
 						if ( Buttons.DOWN_Bit )
 						{
@@ -250,7 +233,6 @@ void ButtonHandler()
 								if ( DispFilePos<(DispFileNum-1) ) { DispFilePos++; }
 						}
 						//-----------------------------
-
 						//-----------------------------
 						if ( Buttons.RIGHT_Bit )
 						{
@@ -286,9 +268,7 @@ void ButtonHandler()
 				//-----------------------------------------
 				if (1/*( Value_int16_t == 429 ) /*&& ( File_Size_Current < 524289 )*/ )
 				{
-
 						USB_Status_For_Display = USB_STAT_UPDATE;
-
 						//-----------------------------
 						if ( Buttons.UP_Bit )
 						{
@@ -299,7 +279,6 @@ void ButtonHandler()
 
 						}
 						//-----------------------------
-
 						//-----------------------------
 						if ( Buttons.DOWN_Bit )
 						{
@@ -316,7 +295,6 @@ void ButtonHandler()
 				}
 				else
 				{
-
 						USB_Status_For_Display = USB_STAT_PCBERR;
 
 						//-----------------------------
@@ -326,14 +304,21 @@ void ButtonHandler()
 
 								Menu_Proces_Status = 1;
 								USB_Status_For_Display = USB_STAT_FILESEL;
-
 						}
 						//-----------------------------
-
 				}
 				//-----------------------------------------
-
 			}
+
+			if (Menu_Proces_Status == 3)
+			{
+				if ( Buttons.RIGHT_Bit )
+				{
+					Buttons.RIGHT_Bit=0;
+					HAL_NVIC_SystemReset();
+				}
+			}
+			
 			//============================================================================
 
 			//-----------------------------------------------------------------------------------
@@ -347,29 +332,6 @@ void ButtonHandler()
 			//-----------------------------------------------------------------------------------
 }
 
-//---------------------------------------------------------
-// void DMA1_Stream6_IRQHandler(void)
-// {
-
-
-
-// 		//DMA_Reset_Interapt = (uint32_t)(DMA_IT_TCIF6 & RESERVED_MASK);
-
-// 		//Reset DMA IT Flag
-// 		DMA1->HIFCR = 0x00200000;
-
-// 		//DMA Disable
-// 		DMA1_Stream6->CR &= ~((uint32_t)0x00000001);
-
-// 		DispUart.packTxCnt++;		// go to next packet
-// 		DispUart.pauseTmr=1;		// start timeout
-
-
-// 		//DMA_Write_and_Start();
-
-// }
-//---------------------------------------------------------
-
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -380,9 +342,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 		DispUart.pauseTmr = 1;		// start timeout
 		//HAL_UART_Transmit_DMA(&huart2, DispUart.txBuff, DISP_TX_BUFF);
 	}
-
 }
-
 
 
 //   1 ms timer
@@ -400,11 +360,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     	Button_handler_counter--;
     } else {
     	Button_handler_counter = 5;
-
     	DispTask();
-
-    	ButtonHandler();
-
+		ButtonHandler();
     }
 
 }
@@ -601,13 +558,13 @@ void DispTask(void)
 				// !!! WARNING !!!
 				// DO NOT EXCEED 12 SYMBOLS FOR EACH STRING
 				case MENU_SM_BOOT:					// start bootloader? 								Buttons: NO-YES
-					MenuSysMsgFill(DISP_SYS_MSG_QUE,		"START","BOOTLOADER","RBv.1.2 ?",0,0);
+					MenuSysMsgFill(DISP_SYS_MSG_QUE, "START","BOOTLOADER","RBv.1.2 ?",0,0);
 					break;	
 				case MENU_SM_NO_USB:				// no USB-flash drive. 							Buttons: OK
 					MenuSysMsgFill(DISP_SYS_MSG_WRN_OK,	"USB-FLASH","IS NOT","CONNECTED!",0,0);
 					break;	
 				case MENU_SM_NO_FILE:				// correct file is not found. 			Buttons: OK
-					MenuSysMsgFill(DISP_SYS_MSG_WRN_OK,"BIN-FILES","ARE NOT","FOUND!",0,0);
+					MenuSysMsgFill(DISP_SYS_MSG_WRN_OK, "BIN-FILES","ARE NOT","FOUND!",0,0);
 					break;	
 				case MENU_SM_UPDATE:				// Update firmware?									Buttons: NO-YES
 					len=strlen(SwCurrName);
