@@ -266,7 +266,7 @@ void ButtonHandler()
 			if ( Menu_Proces_Status == 2 )
 			{
 				//-----------------------------------------
-				if (1/*( Value_int16_t == 429 ) /*&& ( File_Size_Current < 524289 )*/ )
+				if (( Value_int16_t == 429 ) /*&& ( File_Size_Current < 524289 )*/ )
 				{
 						USB_Status_For_Display = USB_STAT_UPDATE;
 						//-----------------------------
@@ -650,7 +650,7 @@ void DispTask(void)
 						break;
 					case DISP_PACK_STR_0:
 						// use this string if it need
-						strncpy((void*)&DispUart.txBuff[DISP_REG_CMN_NUM], "BOOTLOADER v. 1.2",	DISP_LISTPARAM_LEN);
+						strncpy((void*)&DispUart.txBuff[DISP_REG_CMN_NUM], "BOOTLOADER RBv.1.2",	DISP_LISTPARAM_LEN);
 						break;						
 					default:
 						break;						
