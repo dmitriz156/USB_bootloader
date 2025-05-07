@@ -466,8 +466,18 @@ void DispTask(void)
 					Menu.pageIndx=MENU_PAGE_EMPTY;
 					Menu.sysMsg=MENU_SM_UPDATE;
 					break;
-				case USB_STAT_PROC_ERASE:		// processing. Sector erasing.			LIST PAGE				
+				case USB_STAT_PROC_ERASE:		// processing. Sector erasing.			LIST PAGE
+					Menu.pageIndx=MENU_PAGE_PROC;
+					Menu.sysMsg=MENU_SM_NO;
+					Menu.lineNum=MENU_PROC_NUM;
+					Menu.linePos=0;
+					break;				
 				case USB_STAT_PROC_LOAD:		// processing. Sector writing.			LIST PAGE
+					Menu.pageIndx=MENU_PAGE_PROC;
+					Menu.sysMsg=MENU_SM_NO;
+					Menu.lineNum=MENU_PROC_NUM;
+					Menu.linePos=0;
+					break;
 				case USB_STAT_PROC_VERIF:		// processing. Sector verification	LIST PAGE	
 					Menu.pageIndx=MENU_PAGE_PROC;
 					Menu.sysMsg=MENU_SM_NO;

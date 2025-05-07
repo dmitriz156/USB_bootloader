@@ -39,14 +39,15 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define VECTOR_TABLE_SIZE                (31 + 1 + 7 + 9)
 
 #define APPLICATION_ADDRESS              0x0800C000
-#define READ_BLOCK_SIZE					 128
+#define READ_BLOCK_SIZE					         128
 #define STORAGE_LUN_NBR                  1
 #define STORAGE_BLK_NBR                  128 //num Kbytes*2
 #define STORAGE_BLK_SIZ                  512
-#define FLASH_START_ADDRESS				 0x0800C000
-#define FILE_OFFSET						 0xC000
+#define FLASH_START_ADDRESS				       0x0800C000
+#define FILE_OFFSET						           0xC000
 
 /* USER CODE END PD */
 
@@ -62,18 +63,14 @@ UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
-
 extern ApplicationTypeDef Appli_state;
 extern USBH_HandleTypeDef hUsbHostFS;
-
 
 FATFS USBDISKFatFs;
 FIL File;
 
-
 DIR Main_Dir;
 FILINFO Main_Dir_Fileinfo;
-
 
 USBSTAT USB_Status_For_Display;
 uint8_t USB_Status_For_Menu_Item;
@@ -237,7 +234,13 @@ int main(void)
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
-  Check_If_Need_Start_Main_Program();
+  //Check_If_Need_Start_Main_Program();
+  HAL_Delay(100);
+
+  if ( ( HAL_GPIO_ReadPin(BTN_L_GPIO_Port, BTN_L_Pin) == 1 ) || ( HAL_GPIO_ReadPin(BTN_R_GPIO_Port, BTN_R_Pin) == 1 ) )
+  {
+  	Jump_To_Main_Application();
+  }
   
   HAL_TIM_Base_Start_IT(&htim5);
   HAL_UART_Transmit_DMA(&huart2, DispUart.txBuff, DISP_TX_BUFF);
@@ -528,42 +531,25 @@ void FLASH_Program_Byte_Customized(uint32_t Address, uint8_t Data)
 	while ((FLASH->SR & FLASH_SR_BSY) != 0 ) {  }
 }
 
-// void Jump_To_Main_Application(void)
-// {
-// 	// Деініціалізація HAL (не обов'язково, але бажано)
-// 	HAL_DeInit();
-// 	// Деактивація переривань
-// 	__disable_irq();
-// 	SCB->VTOR = APPLICATION_ADDRESS; // Зміна вектора таблиці на адресу програми
-// 	// Jump to user application
-// 	uint32_t JumpAddress = *(__IO uint32_t*) (APPLICATION_ADDRESS + 4);
-// 	// Initialize user application's Stack Pointer
-// 	__DSB(); //complete all memory accesses before the jump
-// 	__ISB(); //read the new stack pointer value from the memory
-// 	__set_MSP(*(__IO uint32_t*) APPLICATION_ADDRESS);
-// 	void (* JumpToApplication)(void) = (void (*)(void)) JumpAddress;
-//     JumpToApplication();
-// }
-
 void Jump_To_Main_Application(void)
 {
 	uint32_t app_jump_address;
-	typedef  void (*pFunction)(void); //обявлення типу для функції, що запустить основну програму
-    pFunction Jump_To_Application;
+	app_jump_address = *((volatile uint32_t*)(APPLICATION_ADDRESS + 4)); //reset handler
 
-    HAL_Delay(100);
-    __disable_irq();
+	HAL_RCC_DeInit();
+	HAL_DeInit();
+	void(*GoToApp)(void);
+	GoToApp = (void(*)(void)) app_jump_address;
 
-    // Jump to user application
-    app_jump_address = *(__IO uint32_t*) (APPLICATION_ADDRESS + 4);
-    Jump_To_Application = (pFunction) app_jump_address;
-    // Initialize user application's Stack Pointer 
-    __set_MSP(*(__IO uint32_t*) APPLICATION_ADDRESS);
-    SCB->VTOR = APPLICATION_ADDRESS; // Зміна вектора таблиці на адресу програми
-    //__DSB(); //complete all memory accesses before the jump
-    __ISB(); //read the new stack pointer value from the memory
-
-    Jump_To_Application();		
+	__disable_irq();
+	memset((uint32_t *)NVIC->ICER, 0xFF, sizeof(NVIC->ICER));
+	memset((uint32_t *)NVIC->ICPR, 0xFF, sizeof(NVIC->ICPR));
+	SysTick->CTRL = 0;
+	SCB->ICSR |= SCB_ICSR_PENDSTCLR_Msk;
+	SCB->VTOR = APPLICATION_ADDRESS;
+	//__set_MSP( (uint32_t)&_App);
+	__set_MSP((uint32_t)APPLICATION_ADDRESS);
+	GoToApp();
 }
 
 void Check_If_Need_Start_Main_Program(void)
@@ -777,9 +763,8 @@ void Work_With_File_in_the_USB_Flash(void)
             break;
         }
 
-		//__disable_irq();
-		USB_Status_For_Display = USB_STAT_PROC_ERASE;
-		HAL_Delay(100);
+        USB_Status_For_Display = USB_STAT_PROC_ERASE;
+        HAL_Delay(50);
         HAL_FLASH_Unlock();
 
         // Erase necessary sectors (adjust if more than 1 sector is needed)
@@ -796,9 +781,10 @@ void Work_With_File_in_the_USB_Flash(void)
             Exit_Flag_FR = 4;
             break;
         }
-		USB_Status_For_Display = USB_STAT_PROC_LOAD;
-		HAL_Delay(1000);
+
         // --- Programming Flash ---
+        USB_Status_For_Display = USB_STAT_PROC_LOAD;
+        HAL_Delay(100);
         byteOffset = 0;
 		//read READ_BLOCK_SIZE 128 byte of data from file
         while ((f_read(&File, buffer, READ_BLOCK_SIZE, &bytesRead) == FR_OK) && bytesRead > 0)
@@ -813,8 +799,8 @@ void Work_With_File_in_the_USB_Flash(void)
         HAL_FLASH_Lock();
         f_close(&File);
 
-		USB_Status_For_Display = USB_STAT_PROC_VERIF; //status for display massege
-		HAL_Delay(1000);
+		    USB_Status_For_Display = USB_STAT_PROC_VERIF; //status for display massege
+        HAL_Delay(100);
         // --- Verification phase ---
         Verification_Error = 0;
         byteOffset = 0;
