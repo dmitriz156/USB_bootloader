@@ -5,6 +5,9 @@
 typedef enum
 {
 	USB_STAT_BOOT=0,			// start bootloader? 								Buttons: NO-YES
+	USB_STAT_SELECT_MODE,       // select USB mode Mass Storage Class or USB HOST
+	USB_STAT_HOLD_FILE,			// hold file uploading in MSC mod
+	USB_STAT_INVALID_FILE,		// worning massage about the invalid uploaded file
 	USB_STAT_NO_USB,			// no USB-flash drive. 							Buttons: OK
 	USB_STAT_NO_FILE,			// correct file is not found. 			Buttons: OK
 	USB_STAT_UPDATE,			// Update firmware?									Buttons: NO-YES

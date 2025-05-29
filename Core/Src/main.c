@@ -49,6 +49,7 @@
 #define FLASH_START_ADDRESS				       0x0800C000
 #define FILE_OFFSET						           0xC000
 
+#define MAX_FILES                        32
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -100,11 +101,9 @@ uint8_t Firmware_Upgrase_Allowed_Counter = 0;
 uint8_t Read_Version_Allowed = 0;
 uint8_t Read_Version_Allowed_Counter;
 
-uint8_t Bin_File_is_Found = 0;
-
 uint8_t Counter_For_String;
 
-uint8_t File_Nomber_Counter;
+uint8_t File_Number_Counter;
 
 uint8_t Need_Do_Onse;
 
@@ -267,9 +266,8 @@ int main(void)
     		if ( Need_Do_Onse == 0 )
     		{
     			//Check if file is present
-    			Bin_File_is_Found = Try_Finde_BIN_File();
-
-    			if ( Bin_File_is_Found == 1 ) { USB_Status_For_Menu_Item = 2; } else { USB_Status_For_Menu_Item = 1; }
+    			if ( Try_Finde_BIN_File()) { USB_Status_For_Menu_Item = 2; } else { USB_Status_For_Menu_Item = 1; }
+          DispFileNum = File_Number_Counter;
 
     			Need_Do_Onse = 1;
     		}
@@ -559,182 +557,6 @@ void Check_If_Need_Start_Main_Program(void)
 		Jump_To_Main_Application();
 	}
 }
-/*
-void Work_With_File_in_the_USB_Flash(void)
-{
-	UINT bytesread;
-	uint8_t rtext[1];
-	//uint8_t R_text_arr[READ_BLOCK_SIZE];
-	uint32_t Byte_Nomber;
-	uint32_t File_Size;
-	Verification_Error = 1;
-	uint32_t Erase_Timer;
-	Exit_Flag_FR = 0;
-	while ( Verification_Error == 1 )
-	{
-    HAL_FLASH_Unlock();
-    // Очистити сектор (сектор 5 починається з 0x08020000, розмір – KB)
-    FLASH_EraseInitTypeDef eraseInit;
-    uint32_t SectorError;
-
-    eraseInit.TypeErase    = FLASH_TYPEERASE_SECTORS;
-    eraseInit.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-    eraseInit.Sector       = FLASH_SECTOR_3 | FLASH_SECTOR_4 | FLASH_SECTOR_5 | FLASH_SECTOR_6 | FLASH_SECTOR_7;
-    eraseInit.NbSectors    = 1;
-
-    if (HAL_FLASHEx_Erase(&eraseInit, &SectorError) != HAL_OK)
-    {
-        HAL_FLASH_Lock();
-        return;
-    }
-//		FLASH_Erase_Sector_IRQ_ON_OFF(FLASH_SECTOR_3);
-		//---------------------------------------------------
-		USB_Status_For_Display = USB_STAT_PROC_LOAD;
-
-		File_Size = 0;
-
-		if(f_mount(&USBDISKFatFs, "0:", 0) == FR_OK)
-			//---------------------------------------------------------
-		{
-			if(f_open(&File, Name_For_File_Open[DispFilePos] ,FA_READ)==FR_OK)
-				//---------------------------------------------------
-			{
-				//Move file pointer of the file object
-				if ( f_lseek(&File, 0xC000) == FR_OK )
-				{
-					Byte_Nomber = 0;
-					bytesread = 1;
-					//-----------------------------------------------
-					while ( bytesread > 0 )
-					{
-						f_read(&File, rtext, sizeof(rtext), &bytesread);
-						__disable_irq();
-						FLASH_Program_Byte_Customized( 0x0800C000 + Byte_Nomber, rtext[0]);
-						//LASH_Program_Byte_Customized( 0x0800C000 + Byte_Nomber, R_text_arr[i]);
-						__enable_irq();
-						Byte_Nomber++;
-						File_Size++;
-					}
-					//-----------------------------------------------
-				}
-				else
-				{
-					Exit_Flag_FR=2;
-				}
-				f_close(&File);
-				//---------------------------------------------------
-				HAL_Delay(6000);
-				USB_Status_For_Display = USB_STAT_PROC_VERIF;
-				Verification_Error = 0;
-
-				if ( File_Size == 0 )		{   Verification_Error = 1;    }
-
-				if(f_open(&File, Name_For_File_Open[DispFilePos] ,FA_READ)==FR_OK)
-					//---------------------------------------------------
-				{
-					if ( f_lseek(&File, 0xC000) == FR_OK )
-					{
-						Byte_Nomber = 0;
-						bytesread = 1;
-
-						//-----------------------------------------------
-						while ( bytesread > 0 )
-						{
-							f_read(&File,rtext,sizeof(rtext),&bytesread);
-							if ( (*(__IO uint8_t*) (0x0800C000 + Byte_Nomber) ) != rtext[0] )
-							{
-								Verification_Error = 1;
-							}
-							Byte_Nomber++;
-						}
-						//-----------------------------------------------
-					}
-					else
-					{
-						Exit_Flag_FR=2;
-					}
-					f_close(&File);
-					HAL_Delay(6000);
-					//---------------------------------------------------
-					}
-				else
-				{
-					Exit_Flag_FR=3;
-				}
-
-				if ( Byte_Nomber != File_Size )
-				{
-					Verification_Error = 1;
-				}
-
-				if ( Verification_Error == 0 )
-				{
-					USB_Status_For_Display = USB_STAT_UPDATE_OK;
-					while ( 1 )
-					{
-						if (Buttons.RIGHT_Bit==1)
-						{
-							HAL_NVIC_SystemReset();
-						}
-					}
-				}
-				else
-				{
-					USB_Status_For_Display = USB_STAT_UPDATE_FAIL ;
-
-					Exit_Bit = 0;
-
-					while ( Exit_Bit == 0 )
-					{
-						if (Buttons.DOWN_Bit==1)
-						{
-							Exit_Bit = 1;
-							Buttons.DOWN_Bit = 0;
-							USB_Status_For_Display = USB_STAT_PROC_ERASE;
-							for (Erase_Timer=0; Erase_Timer < 4500000; Erase_Timer++) {  }
-						}
-
-						if (Buttons.UP_Bit==1)
-						{
-							Buttons.UP_Bit=0;
-							HAL_NVIC_SystemReset();
-						}
-					}
-				}
-			}
-			else
-			{
-				Exit_Flag_FR=2;
-			}
-			//---------------------------------------------------
-		}
-		else
-		{
-			Exit_Flag_FR=1;
-		}
-		//---------------------------------------------------------
-		//---------------------------------------------------------
-		//If Error is Took Place - Show The Error Massage
-		if ( Exit_Flag_FR != 0 )
-		{
-			USB_Status_For_Display = USB_STAT_TIMEOUT;
-			while ( 1 )
-			{
-				if (Buttons.RIGHT_Bit==1)
-				{
-					HAL_NVIC_SystemReset();
-				}
-			}
-
-		}
-		//---------------------------------------------------------
-
-	}
-
-	//HAL_NVIC_SystemReset();
-	while ( 1 ) {  }
-}
-*/
 
 void Work_With_File_in_the_USB_Flash(void)
 {
@@ -936,80 +758,59 @@ void Read_Firmware_Version_From_File(void)
 
 }
 
-uint8_t Try_Finde_BIN_File(void)
-{
 
-	char* strstr_bin_resalt;
-	char* strstr_BIN_resalt;
+// Рекурсивна функція для пошуку .BIN файлів з повним шляхом
+static void Find_BIN_Files_In_Dir(const char *base_path) {
+    DIR dir;
+    FILINFO fno;
+    char path[128];
 
-	uint8_t Bin_File_is_Found_Local = 0;
+    if (f_opendir(&dir, base_path) != FR_OK)
+        return;
 
-	//---------------------------------------------------------
-	for ( Counter_For_String=0; Counter_For_String<32; Counter_For_String++ )
-	{
-		memset(UsbFileName_For_Display[Counter_For_String],0x00,32);
-	}
-	//---------------------------------------------------------
+    while (f_readdir(&dir, &fno) == FR_OK && fno.fname[0] != 0) {
+        // Пропустити "." і ".."
+        if (fno.fname[0] == '.' && (fno.fname[1] == 0 || (fno.fname[1] == '.' && fno.fname[2] == 0)))
+            continue;
 
-	if(f_mount(&USBDISKFatFs,"0:",0)==FR_OK)
-		//---------------------------------------------------------
-	{
-		//Create a Directory Object 
-		if(f_opendir(&Main_Dir, "0:")==FR_OK)
-			//---------------------------------------------------------
-		{
-			File_Nomber_Counter = 0;
-			DispFileNum = 0;
+        snprintf(path, sizeof(path), "%s/%s", base_path, fno.fname);
 
-			while ( File_Nomber_Counter < 32 )
-				//------------------------------------------------------------------------------------------------------------------
-			{
-				// Read Directory Entries in Sequence 
-				if ( f_readdir(&Main_Dir, &Main_Dir_Fileinfo)==FR_OK)
-					//---------------------------------------------------------
-				{
-					if ( Main_Dir_Fileinfo.fname[0] )
-					{
-						//------------------------------------------------------------------------------------------------------------------
-						strstr_bin_resalt = strstr( Main_Dir_Fileinfo.fname,".bin" );
-						strstr_BIN_resalt = strstr( Main_Dir_Fileinfo.fname,".BIN" );
+        if (fno.fattrib & AM_DIR) {
+            // Рекурсивно увійти в підкаталог
+            Find_BIN_Files_In_Dir(path);
+        } else {
+            char *ext = strrchr(fno.fname, '.');
+            if (ext && (strcasecmp(ext, ".bin") == 0)) {
+                if (File_Number_Counter < MAX_FILES) {
+                    // Зберегти повний шлях до файлу
+                    const char *relative_path = (strncmp(path, "0:/", 3) == 0)? path + 3 : path;
+                    strncpy(UsbFileName_For_Display[File_Number_Counter], relative_path, sizeof(UsbFileName_For_Display[0]) - 1);
+                    UsbFileName_For_Display[File_Number_Counter][sizeof(UsbFileName_For_Display[0]) - 1] = '\0';
 
-						//---------------------------------------------------------
-						if ( (strstr_bin_resalt && (strstr_bin_resalt[4]==0x00) )  || (strstr_BIN_resalt && (strstr_BIN_resalt[4]==0x00) ) )
-						{
-							strncpy(UsbFileName_For_Display[ File_Nomber_Counter ], Main_Dir_Fileinfo.fname, 31);
+                    strcpy(Name_For_File_Open[File_Number_Counter], fno.altname);
+                    File_Size_Mas[File_Number_Counter] = fno.fsize;
+                    File_Number_Counter++;
+                }
+            } 
+        }
+    }
 
-							strcpy(Name_For_File_Open[File_Nomber_Counter], Main_Dir_Fileinfo.altname);
+    f_closedir(&dir);
+}
 
-							File_Size_Mas[File_Nomber_Counter] = Main_Dir_Fileinfo.fsize;
+uint8_t Try_Finde_BIN_File(void) {
+    File_Number_Counter = 0;
 
-							File_Nomber_Counter++;
-							DispFileNum++;
+    // Очистити старі шляхи
+    for (uint8_t i = 0; i < MAX_FILES; i++) {
+        memset(UsbFileName_For_Display[i], 0x00, sizeof(UsbFileName_For_Display[i]));
+    }
 
-							Bin_File_is_Found_Local = 1;
-						}
-						//---------------------------------------------------------
-					}
-					else
-					{
-						File_Nomber_Counter=32;
-					}
-				}
-				//---------------------------------------------------------
-				else
-					//---------------------------------------------------------
-				{
-					File_Nomber_Counter=32;
-				}
-				//---------------------------------------------------------
-			}
-			//------------------------------------------------------------------------------------------------------------------
-		}
-		//---------------------------------------------------------
-	}
-	//---------------------------------------------------------
+    if (f_mount(&USBDISKFatFs, "0:", 0) == FR_OK) {
+        Find_BIN_Files_In_Dir("0:");
+    }
 
-	return Bin_File_is_Found_Local;
+    return (File_Number_Counter > 0) ? 1 : 0;
 }
 
 
