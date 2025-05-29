@@ -266,7 +266,7 @@ void ButtonHandler()
 			if ( Menu_Proces_Status == 2 )
 			{
 				//-----------------------------------------
-				if (( Value_int16_t == 429 ) /*&& ( File_Size_Current < 524289 )*/ )
+				if (( Value_int16_t == 429 ) && ( File_Size_Current < (0xFFFFF - 0xC000) ) )
 				{
 						USB_Status_For_Display = USB_STAT_UPDATE;
 						//-----------------------------
