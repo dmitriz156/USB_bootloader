@@ -8,42 +8,9 @@
 
 
 extern TIM_HandleTypeDef htim6;
-
+extern USBSTAT USB_Status_For_Display;
 
 char* DispIntToStr(uint16_t data, uint8_t add);
-
-
-extern USBSTAT USB_Status_For_Display;
-extern uint8_t USB_Status_For_Menu_Item;
-extern uint8_t Menu_Proces_Status;
-
-
-extern char UsbFileName_For_Display[32][32];
-
-
-extern char SwNewName[32];
-extern char SwCurrName[32];
-
-
-extern uint16_t DispFileNum;		// 10 file in list -> it is for DEMO only
-extern uint16_t DispFilePos;		// current position in file list
-
-
-extern uint8_t Finde_BIN_Files;
-
-extern uint32_t File_Size_Current;
-
-
-extern uint8_t Firmware_Upgrase_Allowed;
-extern uint8_t Firmware_Upgrase_Allowed_Counter;
-
-extern uint8_t Read_Version_Allowed;
-
-
-extern uint8_t Bin_File_is_Found;
-
-extern uint8_t Read_Version_Allowed_Counter;
-
 
 uint32_t Operate_Led_Counter;
 
@@ -194,7 +161,8 @@ void ButtonHandler()
 						if ( Buttons.RIGHT_Bit )
 						{
 								Buttons.RIGHT_Bit=0;
-								HAL_NVIC_SystemReset();
+								//HAL_NVIC_SystemReset();
+								USB_Status_For_Display = USB_STAT_SELECT_USB_MODE;
 						}
 						//-----------------------------
 				}
@@ -202,18 +170,32 @@ void ButtonHandler()
 				//------------------------------------------------------------------------
 				if ( USB_Status_For_Menu_Item == 1 )
 				{
-						USB_Status_For_Display = USB_STAT_NO_FILE;
+						USB_Status_For_Display = USB_STAT_NO_USB;
 						//-----------------------------
 						if ( Buttons.RIGHT_Bit )
 						{
 								Buttons.RIGHT_Bit=0;
-								HAL_NVIC_SystemReset();
+								//HAL_NVIC_SystemReset();
+								USB_Status_For_Display = USB_STAT_SELECT_USB_MODE;
 						}
 						//-----------------------------
 				}
 				//------------------------------------------------------------------------
 				//------------------------------------------------------------------------
-				if (USB_Status_For_Menu_Item==2)
+				if ( USB_Status_For_Menu_Item == 2 )
+				{
+						USB_Status_For_Display = USB_STAT_SELECT_USB_MODE;
+						//-----------------------------
+						if ( Buttons.RIGHT_Bit )
+						{
+								Buttons.RIGHT_Bit=0;
+								//FLAFG STATUS
+						}
+						//-----------------------------
+				}
+				//------------------------------------------------------------------------
+				//------------------------------------------------------------------------
+				if (USB_Status_For_Menu_Item == 3)
 				{
 						USB_Status_For_Display = USB_STAT_FILESEL;
 
@@ -318,14 +300,11 @@ void ButtonHandler()
 					HAL_NVIC_SystemReset();
 				}
 			}
-			
 			//============================================================================
-
 			//-----------------------------------------------------------------------------------
 			if ( Read_Version_Allowed_Counter >  0 ) { Read_Version_Allowed_Counter--; }
 			if ( Read_Version_Allowed_Counter == 1 ) { Read_Version_Allowed = 1; 			 }
 			//-----------------------------------------------------------------------------------
-
 			//-----------------------------------------------------------------------------------
 			if ( Firmware_Upgrase_Allowed_Counter >  0 ) { Firmware_Upgrase_Allowed_Counter--; }
 			if ( Firmware_Upgrase_Allowed_Counter == 1 ) { Firmware_Upgrase_Allowed = 1; 			 }
@@ -374,7 +353,6 @@ void DispInit(void)
 		char String_L32_For_Disp_Init[32];	
 		uint8_t Counter_For_Disp_Init;
 
-
 		memset((void*)&DispUart,0x00,sizeof(DispUart));
 		
 		// prepare number of packet for each type of display pages
@@ -390,7 +368,6 @@ void DispInit(void)
 		Menu.startTmr=DISP_START_TMR;
 							
 		strcpy(SwCurrName,	DispIntToStr( *(__IO uint16_t*) 0x0800C400, 0) );//0x08008400
-
 		
 		for ( Counter_For_Disp_Init = 0; Counter_For_Disp_Init<32; Counter_For_Disp_Init++ )
 		{		
@@ -457,6 +434,10 @@ void DispTask(void)
 				case USB_STAT_NO_USB:				// no USB-flash drive. 							Buttons: OK
 					Menu.pageIndx=MENU_PAGE_EMPTY;
 					Menu.sysMsg=MENU_SM_NO_USB;
+					break;
+				case USB_STAT_SELECT_USB_MODE:					// select USB mod? 								Buttons: HOST-FLASH
+					Menu.pageIndx=MENU_PAGE_EMPTY;
+					Menu.sysMsg=MENU_SM_SELECT_USB_MODE;
 					break;
 				case USB_STAT_NO_FILE:			// correct file is not found. 			Buttons: OK
 					Menu.pageIndx=MENU_PAGE_EMPTY;
@@ -569,7 +550,10 @@ void DispTask(void)
 				// DO NOT EXCEED 12 SYMBOLS FOR EACH STRING
 				case MENU_SM_BOOT:					// start bootloader? 								Buttons: NO-YES
 					MenuSysMsgFill(DISP_SYS_MSG_QUE, "START","BOOTLOADER","RBv.1.2 ?",0,0);
-					break;	
+					break;
+				case MENU_SM_SELECT_USB_MODE:
+					MenuSysMsgFill(DISP_SYS_MSG_QUE, "ENABLE USB","FLASH DEVICE", "MODE?",0,0);
+					break;
 				case MENU_SM_NO_USB:				// no USB-flash drive. 							Buttons: OK
 					MenuSysMsgFill(DISP_SYS_MSG_WRN_OK,	"USB-FLASH","IS NOT","CONNECTED!",0,0);
 					break;	

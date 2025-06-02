@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "fatfs.h"
+#include "usb_device.h"
 #include "usb_host.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -231,6 +232,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USB_HOST_Init();
   MX_TIM5_Init();
+  //MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
   //Check_If_Need_Start_Main_Program();
@@ -266,7 +268,7 @@ int main(void)
     		if ( Need_Do_Onse == 0 )
     		{
     			//Check if file is present
-    			if ( Try_Finde_BIN_File()) { USB_Status_For_Menu_Item = 2; } else { USB_Status_For_Menu_Item = 1; }
+    			if ( Try_Finde_BIN_File()) { USB_Status_For_Menu_Item = 3; } else { USB_Status_For_Menu_Item = 2; }
           DispFileNum = File_Number_Counter;
 
     			Need_Do_Onse = 1;
@@ -480,17 +482,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14|GPIO_PIN_7, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOG, GPIO_PIN_6, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PB14 PB7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_7;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PG6 */
   GPIO_InitStruct.Pin = GPIO_PIN_6;
@@ -504,6 +499,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);

@@ -55,6 +55,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern PCD_HandleTypeDef hpcd_USB_OTG_HS;
 extern HCD_HandleTypeDef hhcd_USB_OTG_FS;
 extern TIM_HandleTypeDef htim5;
 extern DMA_HandleTypeDef hdma_usart2_tx;
@@ -89,7 +90,7 @@ void HardFault_Handler(void)
   /* USER CODE BEGIN HardFault_IRQn 0 */
 
   /* USER CODE END HardFault_IRQn 0 */
-   while (1)
+  while (1)
   {
     /* USER CODE BEGIN W1_HardFault_IRQn 0 */
 	 //NVIC_SystemReset();
@@ -299,6 +300,20 @@ void OTG_FS_IRQHandler(void)
   /* USER CODE BEGIN OTG_FS_IRQn 1 */
 
   /* USER CODE END OTG_FS_IRQn 1 */
+}
+
+/**
+  * @brief This function handles USB On The Go HS global interrupt.
+  */
+void OTG_HS_IRQHandler(void)
+{
+  /* USER CODE BEGIN OTG_HS_IRQn 0 */
+
+  /* USER CODE END OTG_HS_IRQn 0 */
+  HAL_PCD_IRQHandler(&hpcd_USB_OTG_HS);
+  /* USER CODE BEGIN OTG_HS_IRQn 1 */
+
+  /* USER CODE END OTG_HS_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

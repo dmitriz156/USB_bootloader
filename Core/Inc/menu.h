@@ -18,8 +18,10 @@ typedef enum
 	MENU_SM_NO=0,
 	MENU_SM_BOOT,					// start bootloader? 								Buttons: NO-YES
 	MENU_SM_NO_USB,				// no USB-flash drive. 							Buttons: OK
-	MENU_SM_NO_FILE,			// correct file is not found. 			Buttons: OK
+	MENU_SM_SELECT_USB_MODE,
+	MENU_SM_WAITING_FILE,
 	MENU_SM_UPDATE,				// file is found. Update firmware?	Buttons: NO-YES
+	MENU_SM_NO_FILE,			// correct file is not found. 			Buttons: OK
 	MENU_SM_UPDATE_OK,		// Firmware is updated successfully	Buttons: OK
 	MENU_SM_UPDATE_FAIL,	// Firmware updating failed.Repeat?	Buttons: NO-YES
 	MENU_SM_TRN_FAIL,			// Turnstile is not available				No buttons
