@@ -125,181 +125,293 @@ void ButtonHandler()
 		}
 		if (HAL_GPIO_ReadPin(BTN_L_GPIO_Port, BTN_L_Pin)!=0)  {  Buttons.LEFT_Flag = 0;  }
 		//-------------------------------------------------------------------------
-			//============================================================================
-			if ( Menu_Proces_Status == 0 )
-			{
-				//------------------------------------------------------------------------
-				if ( Buttons.DOWN_Bit )
-				{
-						Buttons.DOWN_Bit=0;
-						Menu_Proces_Status = 1;
-
-						Finde_BIN_Files = 1;
+			
+			switch(USB_Status_For_Display){
+				case USB_STAT_BOOT:
+				//start boot
+				if ( Buttons.DOWN_Bit ) {
+					//yes
+					Buttons.DOWN_Bit=0;
+					Menu_Proces_Status = 1;
+					Finde_BIN_Files = 1;
+					USB_Status_For_Display = USB_STAT_NO_USB;
 				}
-				//------------------------------------------------------------------------
-				//------------------------------------------------------------------------
-				if ( Buttons.UP_Bit )
-				{
-						Buttons.UP_Bit=0;
-						HAL_NVIC_SystemReset();
+				if ( Buttons.UP_Bit ) {
+					//no
+					Buttons.UP_Bit=0;
+					HAL_NVIC_SystemReset();
 				}
-				//------------------------------------------------------------------------
 				Buttons.RIGHT_Flag = 0;
 				Buttons.RIGHT_Bit = 0;
 				Buttons.LEFT_Flag = 0;
 				Buttons.LEFT_Bit = 0;
-			}
-			//============================================================================
-			//============================================================================
-			if ( Menu_Proces_Status == 1 )
-			{
-				//------------------------------------------------------------------------
-				if ( USB_Status_For_Menu_Item == 0 )
-				{
-						USB_Status_For_Display = USB_STAT_NO_USB;
-						//-----------------------------
-						if ( Buttons.RIGHT_Bit )
-						{
-								Buttons.RIGHT_Bit=0;
-								//HAL_NVIC_SystemReset();
-								USB_Status_For_Display = USB_STAT_SELECT_USB_MODE;
-						}
-						//-----------------------------
+				break;
+
+				case USB_STAT_NO_USB:
+				if (Buttons.RIGHT_Bit) {
+					Buttons.RIGHT_Bit = 0;
+					USB_Status_For_Display = USB_STAT_SELECT_USB_MODE;
 				}
-				//------------------------------------------------------------------------
-				//------------------------------------------------------------------------
-				if ( USB_Status_For_Menu_Item == 1 )
-				{
-						USB_Status_For_Display = USB_STAT_NO_USB;
-						//-----------------------------
-						if ( Buttons.RIGHT_Bit )
-						{
-								Buttons.RIGHT_Bit=0;
-								//HAL_NVIC_SystemReset();
-								USB_Status_For_Display = USB_STAT_SELECT_USB_MODE;
-						}
-						//-----------------------------
+				if (Buttons.LEFT_Bit) {
+					Buttons.LEFT_Bit = 0;
 				}
-				//------------------------------------------------------------------------
-				//------------------------------------------------------------------------
-				if ( USB_Status_For_Menu_Item == 2 )
-				{
-						USB_Status_For_Display = USB_STAT_SELECT_USB_MODE;
-						//-----------------------------
-						if ( Buttons.RIGHT_Bit )
-						{
-								Buttons.RIGHT_Bit=0;
-								//FLAFG STATUS
-						}
-						//-----------------------------
-				}
-				//------------------------------------------------------------------------
-				//------------------------------------------------------------------------
-				if (USB_Status_For_Menu_Item == 3)
-				{
-						USB_Status_For_Display = USB_STAT_FILESEL;
+				break;
 
-						//-----------------------------
-						if ( Buttons.UP_Bit )
-						{
-								Buttons.UP_Bit=0;
+				case USB_STAT_FILESEL:
 
-								if ( DispFilePos>0 ) { DispFilePos--; }
-						}
-						//-----------------------------
-						//-----------------------------
-						if ( Buttons.DOWN_Bit )
-						{
-								Buttons.DOWN_Bit=0;
+					if ( Buttons.UP_Bit ) {
+							Buttons.UP_Bit = 0;
+							if ( DispFilePos > 0 ) { DispFilePos--; }
+					}
+					if ( Buttons.DOWN_Bit ) {
+							Buttons.DOWN_Bit = 0;
+							if ( DispFilePos < (DispFileNum - 1) ) { DispFilePos++; }
+					}
+					if ( Buttons.RIGHT_Bit ) {
+							Buttons.RIGHT_Bit = 0;
+							Menu_Proces_Status = 2;
 
-								if ( DispFilePos<(DispFileNum-1) ) { DispFilePos++; }
-						}
-						//-----------------------------
-						//-----------------------------
-						if ( Buttons.RIGHT_Bit )
-						{
-								Buttons.RIGHT_Bit=0;
+							Read_Version_Allowed_Counter = 10;
+							USB_Status_For_Display = USB_STAT_UPDATE;
+					}
+					if ( Buttons.LEFT_Bit ) {
+							Buttons.LEFT_Bit = 0;
+							HAL_NVIC_SystemReset();
+							Menu_Proces_Status = 0;
+							USB_Status_For_Display = USB_STAT_BOOT;
+					}
+				break;
 
-								Menu_Proces_Status = 2;
-
-								Read_Version_Allowed_Counter = 10;
-
-								USB_Status_For_Display = USB_STAT_UPDATE;
-
-						}
-						//-----------------------------
-						//-----------------------------
-						if ( Buttons.LEFT_Bit )
-						{
-								Buttons.LEFT_Bit=0;
-								HAL_NVIC_SystemReset();
-
-								Menu_Proces_Status = 0;
-								USB_Status_For_Display = USB_STAT_BOOT;
-
-						}
-						//-----------------------------
-				}
-				//------------------------------------------------------------------------
-			}
-			//============================================================================
-
-			//============================================================================
-			if ( Menu_Proces_Status == 2 )
-			{
-				//-----------------------------------------
+				case USB_STAT_UPDATE:
 				if (( Value_int16_t == 429 ) && ( File_Size_Current < (0xFFFFF - 0xC000) ) )
 				{
-						USB_Status_For_Display = USB_STAT_UPDATE;
-						//-----------------------------
-						if ( Buttons.UP_Bit )
-						{
-								Buttons.UP_Bit=0;
-
+						if ( Buttons.UP_Bit ) {
+								Buttons.UP_Bit = 0;
 								Menu_Proces_Status = 1;
 								USB_Status_For_Display = USB_STAT_FILESEL;
 
 						}
-						//-----------------------------
-						//-----------------------------
-						if ( Buttons.DOWN_Bit )
-						{
-								Buttons.DOWN_Bit=0;
-
+						if ( Buttons.DOWN_Bit ) {
+								Buttons.DOWN_Bit = 0;
 								Firmware_Upgrase_Allowed_Counter = 10;
-
 								USB_Status_For_Display = USB_STAT_PROC_ERASE;
-
 								Menu_Proces_Status = 3;
 						}
-						//-----------------------------
-
 				}
 				else
 				{
 						USB_Status_For_Display = USB_STAT_PCBERR;
-
-						//-----------------------------
-						if ( Buttons.RIGHT_Bit )
-						{
+						if ( Buttons.RIGHT_Bit ) {
 								Buttons.RIGHT_Bit=0;
-
 								Menu_Proces_Status = 1;
 								USB_Status_For_Display = USB_STAT_FILESEL;
 						}
-						//-----------------------------
 				}
-				//-----------------------------------------
-			}
+				break;
 
-			if (Menu_Proces_Status == 3)
-			{
-				if ( Buttons.RIGHT_Bit )
-				{
-					Buttons.RIGHT_Bit=0;
+				case USB_STAT_SELECT_USB_MODE:
+				if (Buttons.LEFT_Bit) {
+					Buttons.LEFT_Bit = 0;
+					USB_Status_For_Display = USB_STAT_NO_USB;
+				}
+				if (Buttons.RIGHT_Bit) {
+					Buttons.RIGHT_Bit = 0;
+					USB_Status_For_Display = USB_STAT_HOLD_FILE;
+				}
+				break;
+
+				case USB_STAT_HOLD_FILE:
+				if (Buttons.LEFT_Bit) {
+					Buttons.LEFT_Bit = 0;
 					HAL_NVIC_SystemReset();
 				}
+				break;
+
+				case USB_STAT_PROC_ERASE:
+				if (Buttons.RIGHT_Bit) {
+					Buttons.RIGHT_Bit = 0;
+					HAL_NVIC_SystemReset();
+				}
+				break;
+
 			}
+
+
+			// //============================================================================
+			// if ( Menu_Proces_Status == 0 )
+			// {
+			// 	//------------------------------------------------------------------------
+			// 	if ( Buttons.DOWN_Bit )
+			// 	{
+			// 			Buttons.DOWN_Bit=0;
+			// 			Menu_Proces_Status = 1;
+
+			// 			Finde_BIN_Files = 1;
+			// 	}
+			// 	//------------------------------------------------------------------------
+			// 	//------------------------------------------------------------------------
+			// 	if ( Buttons.UP_Bit )
+			// 	{
+			// 			Buttons.UP_Bit=0;
+			// 			HAL_NVIC_SystemReset();
+			// 	}
+			// 	//------------------------------------------------------------------------
+			// 	Buttons.RIGHT_Flag = 0;
+			// 	Buttons.RIGHT_Bit = 0;
+			// 	Buttons.LEFT_Flag = 0;
+			// 	Buttons.LEFT_Bit = 0;
+			// }
+			// //============================================================================
+			// //============================================================================
+			// if ( Menu_Proces_Status == 1 )
+			// {
+			// 	//------------------------------------------------------------------------
+			// 	if ( USB_Status_For_Menu_Item == 0 )
+			// 	{
+			// 			USB_Status_For_Display = USB_STAT_NO_USB;
+			// 			//-----------------------------
+			// 			if ( Buttons.RIGHT_Bit )
+			// 			{
+			// 					Buttons.RIGHT_Bit=0;
+			// 					//HAL_NVIC_SystemReset();
+			// 					USB_Status_For_Display = USB_STAT_SELECT_USB_MODE;
+			// 			}
+			// 			//-----------------------------
+			// 	}
+			// 	//------------------------------------------------------------------------
+			// 	//------------------------------------------------------------------------
+			// 	if ( USB_Status_For_Menu_Item == 1 )
+			// 	{
+			// 			USB_Status_For_Display = USB_STAT_NO_USB;
+			// 			//-----------------------------
+			// 			if ( Buttons.RIGHT_Bit )
+			// 			{
+			// 					Buttons.RIGHT_Bit=0;
+			// 					//HAL_NVIC_SystemReset();
+			// 					USB_Status_For_Display = USB_STAT_SELECT_USB_MODE;
+			// 			}
+			// 			//-----------------------------
+			// 	}
+			// 	//------------------------------------------------------------------------
+			// 	//------------------------------------------------------------------------
+			// 	if ( USB_Status_For_Menu_Item == 2 )
+			// 	{
+			// 			USB_Status_For_Display = USB_STAT_SELECT_USB_MODE;
+			// 			//-----------------------------
+			// 			if ( Buttons.RIGHT_Bit )
+			// 			{
+			// 					Buttons.RIGHT_Bit=0;
+			// 					//FLAFG STATUS
+			// 			}
+			// 			//-----------------------------
+			// 	}
+			// 	//------------------------------------------------------------------------
+			// 	//------------------------------------------------------------------------
+			// 	if (USB_Status_For_Menu_Item == 3)
+			// 	{
+			// 			USB_Status_For_Display = USB_STAT_FILESEL;
+
+			// 			//-----------------------------
+			// 			if ( Buttons.UP_Bit )
+			// 			{
+			// 					Buttons.UP_Bit=0;
+
+			// 					if ( DispFilePos>0 ) { DispFilePos--; }
+			// 			}
+			// 			//-----------------------------
+			// 			//-----------------------------
+			// 			if ( Buttons.DOWN_Bit )
+			// 			{
+			// 					Buttons.DOWN_Bit=0;
+
+			// 					if ( DispFilePos<(DispFileNum-1) ) { DispFilePos++; }
+			// 			}
+			// 			//-----------------------------
+			// 			//-----------------------------
+			// 			if ( Buttons.RIGHT_Bit )
+			// 			{
+			// 					Buttons.RIGHT_Bit=0;
+
+			// 					Menu_Proces_Status = 2;
+
+			// 					Read_Version_Allowed_Counter = 10;
+
+			// 					USB_Status_For_Display = USB_STAT_UPDATE;
+
+			// 			}
+			// 			//-----------------------------
+			// 			//-----------------------------
+			// 			if ( Buttons.LEFT_Bit )
+			// 			{
+			// 					Buttons.LEFT_Bit=0;
+			// 					HAL_NVIC_SystemReset();
+
+			// 					Menu_Proces_Status = 0;
+			// 					USB_Status_For_Display = USB_STAT_BOOT;
+
+			// 			}
+			// 			//-----------------------------
+			// 	}
+			// 	//------------------------------------------------------------------------
+			// }
+			// //============================================================================
+
+			// //============================================================================
+			// if ( Menu_Proces_Status == 2 )
+			// {
+			// 	//-----------------------------------------
+			// 	if (( Value_int16_t == 429 ) && ( File_Size_Current < (0xFFFFF - 0xC000) ) )
+			// 	{
+			// 			USB_Status_For_Display = USB_STAT_UPDATE;
+			// 			//-----------------------------
+			// 			if ( Buttons.UP_Bit )
+			// 			{
+			// 					Buttons.UP_Bit=0;
+
+			// 					Menu_Proces_Status = 1;
+			// 					USB_Status_For_Display = USB_STAT_FILESEL;
+
+			// 			}
+			// 			//-----------------------------
+			// 			//-----------------------------
+			// 			if ( Buttons.DOWN_Bit )
+			// 			{
+			// 					Buttons.DOWN_Bit=0;
+
+			// 					Firmware_Upgrase_Allowed_Counter = 10;
+
+			// 					USB_Status_For_Display = USB_STAT_PROC_ERASE;
+
+			// 					Menu_Proces_Status = 3;
+			// 			}
+			// 			//-----------------------------
+
+			// 	}
+			// 	else
+			// 	{
+			// 			USB_Status_For_Display = USB_STAT_PCBERR;
+
+			// 			//-----------------------------
+			// 			if ( Buttons.RIGHT_Bit )
+			// 			{
+			// 					Buttons.RIGHT_Bit=0;
+
+			// 					Menu_Proces_Status = 1;
+			// 					USB_Status_For_Display = USB_STAT_FILESEL;
+			// 			}
+			// 			//-----------------------------
+			// 	}
+			// 	//-----------------------------------------
+			// }
+
+			// if (Menu_Proces_Status == 3)
+			// {
+			// 	if ( Buttons.RIGHT_Bit )
+			// 	{
+			// 		Buttons.RIGHT_Bit=0;
+			// 		HAL_NVIC_SystemReset();
+			// 	}
+			// }
 			//============================================================================
 			//-----------------------------------------------------------------------------------
 			if ( Read_Version_Allowed_Counter >  0 ) { Read_Version_Allowed_Counter--; }
@@ -439,6 +551,10 @@ void DispTask(void)
 					Menu.pageIndx=MENU_PAGE_EMPTY;
 					Menu.sysMsg=MENU_SM_SELECT_USB_MODE;
 					break;
+				case USB_STAT_HOLD_FILE:					// select USB mod? 								Buttons: HOST-FLASH
+					Menu.pageIndx=MENU_PAGE_EMPTY;
+					Menu.sysMsg=MENU_SM_HOLD_FILE;
+					break;	
 				case USB_STAT_NO_FILE:			// correct file is not found. 			Buttons: OK
 					Menu.pageIndx=MENU_PAGE_EMPTY;
 					Menu.sysMsg=MENU_SM_NO_FILE;
@@ -551,9 +667,6 @@ void DispTask(void)
 				case MENU_SM_BOOT:					// start bootloader? 								Buttons: NO-YES
 					MenuSysMsgFill(DISP_SYS_MSG_QUE, "START","BOOTLOADER","RBv.1.2 ?",0,0);
 					break;
-				case MENU_SM_SELECT_USB_MODE:
-					MenuSysMsgFill(DISP_SYS_MSG_QUE, "ENABLE USB","FLASH DEVICE", "MODE?",0,0);
-					break;
 				case MENU_SM_NO_USB:				// no USB-flash drive. 							Buttons: OK
 					MenuSysMsgFill(DISP_SYS_MSG_WRN_OK,	"USB-FLASH","IS NOT","CONNECTED!",0,0);
 					break;	
@@ -594,6 +707,12 @@ void DispTask(void)
 				
 				case MENU_SM_PCBERR:			// PCB code is failed
 					MenuSysMsgFill(DISP_SYS_MSG_WRN_OK,"NEW FIRMWARE","IS NOT","SUITABLE","FOR PCB429!",0);
+					break;
+				case MENU_SM_SELECT_USB_MODE:
+					MenuSysMsgFill(DISP_SYS_MSG_SETT, "ENABLE USB","FLASH DEVICE", "MODE?",0,0);
+					break;
+				case MENU_SM_HOLD_FILE:
+					MenuSysMsgFill(DISP_SYS_MSG_INFO_BACK, "CONECT TO PC","AND UPLOAD", "FILE .bin",0,0);
 					break;
 
 

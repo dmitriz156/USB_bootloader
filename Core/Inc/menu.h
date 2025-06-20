@@ -19,7 +19,7 @@ typedef enum
 	MENU_SM_BOOT,					// start bootloader? 								Buttons: NO-YES
 	MENU_SM_NO_USB,				// no USB-flash drive. 							Buttons: OK
 	MENU_SM_SELECT_USB_MODE,
-	MENU_SM_WAITING_FILE,
+	MENU_SM_HOLD_FILE,
 	MENU_SM_UPDATE,				// file is found. Update firmware?	Buttons: NO-YES
 	MENU_SM_NO_FILE,			// correct file is not found. 			Buttons: OK
 	MENU_SM_UPDATE_OK,		// Firmware is updated successfully	Buttons: OK

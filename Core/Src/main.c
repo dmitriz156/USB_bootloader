@@ -107,6 +107,7 @@ uint8_t Counter_For_String;
 uint8_t File_Number_Counter;
 
 uint8_t Need_Do_Onse;
+uint8_t USB_HOST_deinit_flag = 0;
 
 union  {uint8_t Type_u8_t[2]; int16_t Type_u16_t;} Value;
 
@@ -255,48 +256,62 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    MX_USB_HOST_Process();
+    if (USB_Status_For_Display != USB_STAT_HOLD_FILE) {
+        MX_USB_HOST_Process();
+    }
 
     /* USER CODE BEGIN 3 */
 
     if(Appli_state==APPLICATION_READY)
     	//------------------------------------
     {
+      if (USB_Status_For_Display == USB_STAT_HOLD_FILE)
+      {
+        if (!USB_HOST_deinit_flag)
+        {
+            USB_HOST_deinit_flag = 1;
+            USBH_DeInit(&hUsbHostFS);
+            MX_USB_DEVICE_Init();
+        }
+      }
     	//--------------------------------------------------------------
     	if ( Finde_BIN_Files )
     	{
     		if ( Need_Do_Onse == 0 )
     		{
     			//Check if file is present
-    			if ( Try_Finde_BIN_File()) { USB_Status_For_Menu_Item = 3; } else { USB_Status_For_Menu_Item = 2; }
+    			if ( Try_Finde_BIN_File()) { 
+              //USB_Status_For_Menu_Item = 3;
+              USB_Status_For_Display = USB_STAT_FILESEL;
+          } else {
+              //USB_Status_For_Menu_Item = 2;
+              //USB_Status_For_Display = USB_STAT_SELECT_USB_MODE;
+          }
           DispFileNum = File_Number_Counter;
 
     			Need_Do_Onse = 1;
     		}
     	}
     	//--------------------------------------------------------------
-
     	//--------------------------------------------------------------
     	if ( Read_Version_Allowed )
     	{
     		Read_Firmware_Version_From_File();
     	}
     	//--------------------------------------------------------------
-
     	//--------------------------------------------------------------
     	if ( Firmware_Upgrase_Allowed  )
     	{
     		Work_With_File_in_the_USB_Flash();
     	}
     	//--------------------------------------------------------------
-
     }
     else
     {
     	if ( Finde_BIN_Files )
     	{
     		USB_Status_For_Menu_Item = 0;
-    		USB_Status_For_Display=USB_STAT_NO_USB;
+    		//USB_Status_For_Display=USB_STAT_NO_USB;
 
     		USB_Status_For_Menu_Item = 0;
     		Need_Do_Onse=0;

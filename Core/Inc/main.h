@@ -93,6 +93,37 @@ typedef struct
 
 extern button_t Buttons;
 
+extern uint8_t USB_Status_For_Menu_Item;
+extern uint8_t Menu_Proces_Status;
+
+extern char UsbFileName_For_Display[32][32];
+extern char Name_For_File_Open[32][32];
+
+extern uint32_t File_Size_Mas[];
+
+extern uint32_t File_Size_Current;
+
+extern char SwNewName [];
+extern char SwCurrName [];
+
+extern uint16_t DispFileNum;		// 10 file in list -> it is for DEMO only
+extern uint16_t DispFilePos;		// current position in file list
+
+extern uint8_t Finde_BIN_Files;
+
+extern uint8_t Firmware_Upgrase_Allowed;
+extern uint8_t Firmware_Upgrase_Allowed_Counter;
+
+
+extern uint8_t Read_Version_Allowed;
+extern uint8_t Read_Version_Allowed_Counter;
+
+extern uint8_t Counter_For_String;
+
+extern uint8_t File_Number_Counter;
+
+extern uint8_t Need_Do_Onse;
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
