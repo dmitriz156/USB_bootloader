@@ -233,7 +233,6 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USB_HOST_Init();
   MX_TIM5_Init();
-  //MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
   //Check_If_Need_Start_Main_Program();
